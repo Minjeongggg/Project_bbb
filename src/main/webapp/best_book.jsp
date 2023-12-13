@@ -42,6 +42,7 @@
     </style>
 </head>
 <body>
+<!--  -->
     <header id="public_header">
         <ul id="header_ul">
             <div id="wrap_headerMenu">
