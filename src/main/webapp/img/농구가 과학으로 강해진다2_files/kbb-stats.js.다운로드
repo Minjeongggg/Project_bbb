@@ -1,0 +1,592 @@
+/* eslint-disable camelcase */
+
+let IS_MOBILE
+
+// IIFE, kbb.stats.ready
+;((GLOBAL_NAME) => {
+  const AnalyticsList = [
+    /**
+     * 카카오 픽셀
+     * https://kakaoad.github.io/kakao-pixel/
+     * TODO: kakaopixel -> kakao
+     */
+    {
+      name: 'kakaopixel',
+      url: 'https://t1.daumcdn.net/kas/static/kp.js',
+      globals: 'kakaoPixel',
+      prototype: {
+        pixel (...args) {
+          return this.globals.kakaoPixel(...args)
+        },
+        pageView (...args) {
+          return this.pixel().pageView(...args)
+        }
+      },
+      posthandle ({ kakaoPixel }) {
+        // kakaoPixel('1830363100807970928').pageView()
+        const API_KEY = '1830363100807970928'
+        // console.log(this.name, globals)
+        // console.log('kakaoPixcel:', kakaoPixel)
+        // kakaoPixel(API_KEY).pageView()
+        this.override('kakaoPixel', kakaoPixel.bind(null, API_KEY))
+        // window.kakaoPixel().pageView()
+        this.pageView()
+      }
+    },
+    /**
+     * 네이버 애널리틱스
+     * https://analytics.naver.com/
+     */
+    {
+      name: 'naver',
+      url: 'https://wcs.naver.net/wcslog.js',
+      globals: ['wcs_add', 'wcs', 'wcs_do', '_nasa'],
+      prehandle () {
+        window._nasa = window._nasa || {}
+      },
+      posthandle ({ wcs_add, wcs, wcs_do, _nasa }) {
+        wcs_add.wa = 's_453f4415ebcb'
+        wcs.inflow('kyobobook.co.kr')
+        wcs_do(_nasa || {})
+      }
+    },
+    /**
+     * Meta(facebook) 픽셀
+     * https://ko-kr.facebook.com/business/help/402791146561655?id=1205376682832142
+     */
+    {
+      name: 'facebook',
+      url: 'https://connect.facebook.net/en_US/fbevents.js',
+      globals: 'fbq',
+      prehandle () {
+        if (window.fbq) return
+        const fbq = function () {
+          fbq.callMethod
+            ? fbq.callMethod.apply(fbq, arguments)
+            : fbq.queue.push(arguments)
+        }
+        window.fbq = fbq
+        if (!window._fbq) window._fbq = fbq
+        fbq.push = fbq
+        fbq.loaded = true
+        fbq.version = '2.0'
+        fbq.queue = []
+      },
+      posthandle ({ fbq }) {
+        const API_KEY = '247842611347428'
+        fbq('init', API_KEY)
+        fbq('track', 'PageView')
+      }
+    },
+    /**
+     * Global site tag
+     * https://developers.google.com/tag-platform/devguides/install-gtagjs?hl=ko
+     */
+    {
+      name: 'google',
+      url: 'https://www.googletagmanager.com/gtag/js?id=AW-996822555',
+      globals: ['dataLayer', 'gtag'],
+      prehandle () {
+        window.dataLayer = window.dataLayer || []
+        window.gtag = function () { window.dataLayer.push(arguments) }
+      },
+      posthandle ({ dataLayer, gtag }) {
+        // dataLayer = dataLayer || []
+        // gtag = function () { dataLayer.push(arguments) }
+        gtag('js', new Date())
+        gtag('config', 'AW-996822555')
+      }
+    },
+    /**
+     * 모비센스
+     * https://www.mobon.net/bridge/naver/?utm_source=naver&utm_medium=blog&utm_campaign=contents&utm_content=13
+     * TODO: mobion -> mobon
+     */
+    {
+      name: 'mobon',
+      globals: 'enp',
+      // url: 'https://cdn.megadata.co.kr/dist/prod/enp_tracker_self_hosted.min.js',
+      url: [
+        'https://cdn.megadata.co.kr/dist/prod/v2/mtm.js',
+        '?adverId=' + 'hottracks',
+        '&device=' + (IS_MOBILE ? 'M' : 'W')
+      ].join(''),
+      prehandle () {
+        window.enp = window.enp || function () {
+          (window.enp.q = window.enp.q || []).push(arguments)
+        }
+      },
+      posthandle: ({ enp }) => {
+        enp('create', 'common', 'hottracks', { device: IS_MOBILE ? 'M' : 'W' })
+        enp('send', 'common', 'hottracks')
+      }
+    },
+    /**
+     * 큐봇 광고스크립트
+     * @see https://kyobobookcokr-my.sharepoint.com/:x:/g/personal/aiden_kyobobook_com/EVELiBRQ4z9Bt7Eeybz0PswB6Z8FugAeER5Qy5f8XNE4hg?rtime=ELrtPCnf20g
+     */
+    {
+      name: 'qbot',
+      globals: 'eglc',
+      url: 'https://logger.eigene.io/js/logger.min.js',
+      prototype: {
+        exec (method, key, value) {
+          window.eglc.op(method, key, value)
+        },
+        set (key, value) {
+          this.exec('setVar', key, value)
+        },
+        setCUID (cuid) {
+          this.set('cuid', cuid ?? '4ffe4f3c-7219-4bd2-a7ae-eba4aefc9b19')
+        },
+        setUserID () {
+          this.set('userId', KbbJS.user?.model?.sub ?? '')
+        },
+        track (name, cuid) {
+          this.setCUID(cuid)
+          this.setUserID()
+          this.exec('track', name)
+        },
+        /**
+         * 장바구니
+         * @param {string} sid 상품아이디
+         */
+        cartItem (sid, cuid) {
+          this.set('itemId', sid)
+          this.track('add_to_cart', cuid)
+        },
+        /**
+         * 찜하기
+         * @param {string} sid 상품아이디
+         */
+        wishItem (sid, cuid) {
+          this.set('itemId', sid)
+          this.track('zzim', cuid)
+        },
+        /**
+         * 검색어 수집
+         * @param {string} keyword 검색어
+         */
+        search (keyword, cuid) {
+          this.set('searchTerm', keyword)
+          this.track('search', cuid)
+        }
+      }
+    }
+  ]
+
+  const IMPORT_RETRY_ITV_COUNT = 5
+  const IMPORT_RETRY_ITV_TIME = 100
+
+  // TODO: 핫트랙스 마이그레이션
+  IS_MOBILE = (() => {
+    try {
+      // 교보문고
+      const view = document.querySelector('html[data-view]').dataset.view
+      return view.toLowerCase() === 'mok'
+    } catch (err) {
+      const host = window.location.host
+      // 핫트랙스
+      if (/^m?hottracks\./.test(host)) {
+        return /^m[w]+\./.test(host)
+      }
+      // 디지털 교보문고
+      return (function (a) {
+        const bTest1 = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a)
+        const bTest2 = /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw-(n|u)|c55\/|capi|ccwa|cdm-|cell|chtm|cldc|cmd-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc-s|devi|dica|dmob|do(c|p)o|ds(12|-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(-|_)|g1 u|g560|gene|gf-5|g-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd-(m|p|t)|hei-|hi(pt|ta)|hp( i|ip)|hs-c|ht(c(-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i-(20|go|ma)|i230|iac( |-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|-[a-w])|libw|lynx|m1-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|-([1-8]|c))|phil|pire|pl(ay|uc)|pn-2|po(ck|rt|se)|prox|psio|pt-g|qa-a|qc(07|12|21|32|60|-[2-7]|i-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h-|oo|p-)|sdk\/|se(c(-|0|1)|47|mc|nd|ri)|sgh-|shar|sie(-|m)|sk-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h-|v-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl-|tdg-|tel(i|m)|tim-|t-mo|to(pl|sh)|ts(70|m-|m3|m5)|tx-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas-|your|zeto|zte-/i.test(a.substr(0, 4))
+        return bTest1 || bTest2
+      })(navigator.userAgent || window.opera)
+    }
+  })()
+
+  function getScriptTypeByURL (url) {
+    if (url.indexOf('?')) {
+      url = url.split('?')[0]
+    }
+    return /\.css$/.test(url) ? 'css' : 'js'
+  }
+
+  function findExistScript (options) {
+    const { name, url, type } = options
+    const bScript = type === 'js'
+    const $list = $(bScript ? 'script' : 'link')
+
+    for (let i = 0; i < $list.length; i += 1) {
+      const elem = $list[i]
+      const $el = $(elem)
+      if (name != null && $el.attr('data-name') === name) {
+        return elem
+      }
+      const prop = bScript ? 'src' : 'href'
+      const elProp = $el.attr(prop)
+      if (elProp && elProp.includes(url)) {
+        return elem
+      }
+    }
+    return null
+  }
+
+  function arr2obj (aList) {
+    const oResult = {}
+    aList.forEach(({ key, value }) => (oResult[key] = value))
+    return oResult
+  }
+
+  async function asyncGetGlobalInstance (aNameList, result) {
+    aNameList = Array.isArray(aNameList) ? aNameList : [aNameList]
+    let nRetryCount = 0
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(() => {
+        const aInstanceList = aNameList.map(name => {
+          const value = window[name]
+          return (value == null) ? null : { key: name, value }
+        })
+        const bAllExist = aInstanceList.every(obj => obj != null)
+        if (bAllExist) {
+          clearInterval(interval)
+          const data = Object.assign({}, result, {
+            globals: arr2obj(aInstanceList)
+          })
+          return resolve(data)
+        }
+        nRetryCount += 1
+        console.warn(`[asyncGetGlobalInstance] retry -- ${nRetryCount}`)
+        if (nRetryCount < IMPORT_RETRY_ITV_COUNT) return
+        clearInterval(interval)
+        const error = new Error(`Failed to load globals: ${aNameList.join(', ')}`)
+        console.error(error)
+        return reject(error)
+      }, IMPORT_RETRY_ITV_TIME)
+    })
+  }
+
+  /**
+   * 스크립트 엘리먼트 추가
+   * @param {Object} data
+   * @param {string} data.url - 리소스 URL
+   * @param {'js'|'css'} [data.type] - JS, CSS
+   * @param {Object} [data.attrs] - HTMLAttributes
+   * @param {boolean} [data.async] - (JS Only) async 여부
+   * @param {boolean} [data.defer] - (JS Only) defer 여부
+   * @param {script|script[]} [data.globals] - 스크립트가 로드된 후 설정되는 전역변수 이름
+   * @param {string} [data.targetTag] - 추가될 상위 엘리먼트태그 이름 (기본값: js - body, css - head)
+   * @param {Function} [data.prehandle] - 스크립트가 로드되기 전에 실행되는 콜백함수
+   * @param {Function} [data.posthandle] - 스크립트가 로드되고 실행되는 콜백함수
+   */
+  function importScriptV2 (data) {
+    const {
+      name,
+      url,
+      attrs,
+      async,
+      defer,
+      globals
+    } = data
+
+    // 스크립트 유형
+    const type = data.type ?? getScriptTypeByURL(url)
+    // 자바스크립트 여부
+    const bScript = type.toLowerCase() === 'js'
+    // 임포트 상위 엘리먼트 태그이름
+    const targetTag = data.targetTag ?? (bScript ? 'body' : 'head')
+
+    const scriptElement = document.createElement(bScript ? 'script' : 'link')
+    if (bScript) {
+      scriptElement.src = url
+      scriptElement.defer = defer ?? true
+      scriptElement.async = async ?? true
+    } else {
+      scriptElement.rel = 'stylesheet'
+      scriptElement.href = url
+    }
+
+    // https://developer.mozilla.org/ko/docs/Web/HTML/Element/link#attr-type
+    scriptElement.type = `text/${bScript ? 'javascript' : 'css'}`
+
+    if (attrs != null) {
+      for (const k in attrs) {
+        scriptElement.setAttribute(k, attrs[k])
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      scriptElement.addEventListener('error', event => reject(event))
+
+      // 중복로드 방지 -- 이미 스크립트가 로드되었는지 체크
+      const existElement = findExistScript({ type, url, name })
+
+      if (existElement != null) {
+        console.warn(`[kbbStats.importScriptV2] duplicate import url: ${url}`)
+        return Promise.resolve({ target: existElement })
+      }
+
+      scriptElement.addEventListener('load', event => {
+        resolve({ event, target: scriptElement })
+      })
+
+      try {
+        document[targetTag].appendChild(scriptElement)
+      } catch (err) {
+        if (targetTag === 'body') {
+          $(() => document[targetTag].appendChild(scriptElement))
+        } else {
+          console.error(`${name} append to ${targetTag} failed. ${url}`)
+        }
+      }
+    }).then(result => {
+      // 스크립트 로드 콜백
+      if (globals == null) {
+        return Promise.resolve(result)
+      }
+      // 스크립트 로드 후, 전역변수 레디 콜백
+      return asyncGetGlobalInstance(globals, result)
+    })
+  }
+
+  /**
+   * 스크립트 데이터, 로드
+   */
+  class StatsItem {
+    _data = null
+    _result = null
+    _loaded = false
+    promise = null
+
+    constructor (data) {
+      this._data = data
+    }
+
+    get loaded () { return this._loaded }
+    get pending () { return this.promise != null }
+    get data () { return this._data }
+    get name () { return this.data.name }
+
+    get result () { return this._result }
+    set result (data) {
+      if (this.result) return
+      this.promise = null
+      this._result = data
+      this._loaded = true
+    }
+
+    /**
+     * @type {HTMLElement}
+     */
+    get element () {
+      return this.result?.target
+    }
+
+    get globals () {
+      return this.result?.globals
+    }
+
+    override (name, func) {
+      if (this.globals == null) return func
+      this.globals[name] = func
+      window[name] = func
+      return func
+    }
+
+    load () {
+      if (this.loaded) {
+        return Promise.resolve(this.result)
+      }
+      if (this.pending) {
+        return this.promise
+      }
+      const data = this.data
+      const fnPreHandle = data.prehandle
+      if (fnPreHandle != null) {
+        // prehandle: 스크립트가 로드되기 전에 실행
+        try {
+          fnPreHandle.call(this, data)
+        } catch (err) {
+          console.warn(err)
+        }
+      }
+      this.promise = importScriptV2(data).then(result => {
+        // posthandle: 전역변수 레디 후, 실행
+        // result: { target, globals }
+        this.result = result
+        const fnPostHandle = data.posthandle
+        if (fnPostHandle != null) {
+          try {
+            fnPostHandle.call(this, this.globals)
+          } catch (err) {
+            console.warn(err)
+          }
+        }
+        return Promise.resolve(result)
+      })
+      return this.promise
+    }
+  }
+
+  const KBB_STATS_EVENT_PREFIX = 'kbbstats'
+  const KbbStatsEvent = {
+    INITIALIZED: 'initialized'
+  }
+  class KbbStatsManager {
+    _list = []
+    _initialized = false
+    readyEventStack = null
+    constructor () {
+      this.readyEventStack = AnalyticsList.map(({ name }) => ({ name, loaded: false, list: [] }))
+      const initEvent = this.once(KbbStatsEvent.INITIALIZED, () => (this._initialized = true))
+      const tasks = AnalyticsList.map(o => {
+        const name = o.name
+        const event = this.once(`load-${name}`, () => {
+          const item = this.getReadyStackItem(name)
+          item.list.forEach(callback => this.ready(name, callback))
+          item.loaded = true
+        })
+        return this.load(o).then(result => {
+          this.trigger(event)
+          return result
+        })
+      })
+      Promise.allSettled(tasks).then(() => this.trigger(initEvent))
+    }
+
+    get initialized () { return this._initialized }
+
+    /**
+     * @type {StatsItem[]}
+     */
+    get list () { return this._list }
+
+    getReadyStackItem (name) {
+      return this.readyEventStack.find(t => t.name === name)
+    }
+
+    once (name, callback) {
+      const type = `${KBB_STATS_EVENT_PREFIX}-${name}`
+      const event = new Event(type)
+      const handle = () => {
+        const data = { type }
+        callback(data)
+        window.removeEventListener(type, handle)
+      }
+      window.addEventListener(type, handle)
+      return event
+    }
+
+    trigger (event) {
+      window.dispatchEvent(event)
+    }
+
+    /**
+     * 등록(로드) 아이템을 반환
+     * @param {string} name - 이름
+     * @returns {Promise<StatsItem>}
+     */
+    get (name) {
+      return this.list.find(o => o.name === name)
+    }
+
+    /**
+     * 대상 스크립트(데이터) 로드
+     * @param {Object} data - 데이터
+     * @returns {Promise<{ target, globals }>}
+     */
+    load (data) {
+      if (data == null) {
+        return Promise.reject(new Error('required data'))
+      }
+      const name = data.name
+      if (name == null) {
+        return Promise.reject(new Error('required data.name'))
+      }
+      let item = this.get(name)
+      if (item != null) {
+        if (item.loaded) return Promise.resolve(item)
+        return item.promise
+      }
+      class CustomStatsItem extends StatsItem {}
+      if (data.prototype) {
+        Object.keys(data.prototype).forEach(k => {
+          CustomStatsItem.prototype[k] = data.prototype[k]
+        })
+      }
+      item = new CustomStatsItem(data)
+
+      this.list.push(item)
+      return item.load()
+    }
+
+    /**
+     * 대상 스크립트(데이터) 로드
+     * @param {string} name - 스크립트(데이터) 이름
+     * @param {Function} [callback] - 레디 콜백
+     * @returns {Promise<{ instance, result, ...globals }>}
+     */
+    ready (name, callback) {
+      const item = this.get(name)
+      if (item == null) {
+        return Promise.reject(new Error(`not found item: ${name}`))
+      }
+      return item.load().then(result => {
+        const customObj = Object.assign({
+          instance: item
+        }, result, result.globals)
+        if (callback != null) {
+          callback.call(item, customObj)
+        }
+        return Promise.resolve(customObj)
+      })
+    }
+  }
+
+  AnalyticsList.forEach(({ name }) => {
+    KbbStatsManager.prototype[name] = function (callback) {
+      const item = this.getReadyStackItem(name)
+      if (item.loaded) {
+        return this.ready(name, callback)
+      }
+      item.list.push(callback)
+    }
+  })
+
+  const stats = new KbbStatsManager()
+  ;[
+    `kbb.${GLOBAL_NAME}`,
+    `KbbJS.${GLOBAL_NAME}`,
+    'KbbStats'
+  ].forEach(name => {
+    _.set(window, name, stats)
+  })
+})('stats')
+
+// kbb.stats.ready('kakaopixel', () => {
+//   window.kakaoPixel().pageView()
+// })
+// kbb.stats.kakaopixel(function ({ kakaoPixel }) {
+//   console.log(`[kbb.stats] loaded - ${this.name}:`, window.kakaoPixel === kakaoPixel)
+//   this.pageView()
+// })
+// kbb.stats.naver(function ({ wcs }) {
+//   console.log(`[kbb.stats] loaded - ${this.name}:`, window.wcs === wcs)
+// })
+// kbb.stats.facebook(function ({ fbq }) {
+//   console.log(`[kbb.stats] loaded - ${this.name}:`, window.fbq === fbq)
+// })
+// kbb.stats.google(function ({ gtag }) {
+//   console.log(`[kbb.stats] loaded - ${this.name}:`, window.gtag === gtag)
+// })
+// kbb.stats.mobon(function ({ enp }) {
+//   console.log(`[kbb.stats] loaded - ${this.name}:`, window.enp === enp)
+// })
+// kbb.stats.qbot(({ eglc }) => {
+//   console.log('* qbot 글로벌 변수(eglc):', eglc)
+//   console.log('* qbot 글로벌 변수(eglc):', window.eglc)
+//   // 장바구니
+//   eglc.op('setVar', 'cuid', '4ffe4f3c-7219-4bd2-a7ae-eba4aefc9b19')
+//   eglc.op('setVar', 'itemId', '{$barcode}')
+//   eglc.op('setVar', 'userId', '{$memno}')
+//   eglc.op('track', 'add_to_cart')
+//   // 찜하기
+//   eglc.op('setVar', 'cuid', '4ffe4f3c-7219-4bd2-a7ae-eba4aefc9b19')
+//   eglc.op('setVar', 'itemId', '{$barcode}')
+//   eglc.op('setVar', 'userId', '{$memno}')
+//   eglc.op('track', 'zzim')
+// })

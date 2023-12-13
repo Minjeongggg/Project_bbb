@@ -1,0 +1,37 @@
+/* eslint-disable no-var */
+/* globals KbbJS */
+
+/**
+ * [팝업] 최근 본 컨텐츠
+ */
+
+;(function (ResName) {
+  KbbJS.setOption('plugins.ui-recently-contents', {
+    dependOn: [ResName.KBB_CM_SCRIPT],
+    api: {
+      url: 'http://api-aws.dev3.kyobobook.co.kr/onk/api/v1/recently/saw_recently_list',
+      method: 'get'
+    },
+    elements: {
+      root: '#popHistoryContents',
+      recentBtn: {
+        web: '.btn_history',
+        mobile: '.btn_docker_history'
+      },
+      itemWrap: '.history_list',
+      item: {
+        // <li class="history_item">
+        wrap: '.history_item',
+        deleteBtn: '.btn_history_delete',
+        wish: {
+          ink: '.btn_history_wish',
+          mok: '.btn_wish_circle.size_sm'
+        },
+        tag: {
+          wrap: '.tag_wrap',
+          item: '.tag'
+        }
+      }
+    }
+  })
+})(KbbJS.getOption('resource.names'))

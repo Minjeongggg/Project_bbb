@@ -1,0 +1,2876 @@
+/**
+ * @file kyobo_search_auto.js
+ * @doc PC 자동완성 기능 사용시 기능정리
+ */
+ 
+var isRcntShow = true; // 최근검색어 노출 여부설정.
+var autoKeywordThrottle = null;
+var enterKeySubmitFlag = true;
+
+var autoSearchDomain= "";
+var autoCompleteDomain = "";
+var autoCsCenterDomain = "";    
+var autoKyoboProdDetailDomain = "";
+var autoEbookProdDetailDomain = "";
+var autoEbookDumProdDetailDomain = "";
+var autoSamProdDetailDomain = "";
+var autoSamDumProdDetailDomain = "";        
+var autoHottracksProdDetailDomain = "";
+var autoAuthorInfoDomain = "";
+var autoEventInfoDomain = "";
+var autoOrderDomain = "";
+var autoBoApiDomain =  "";
+var autoLoginDomain = "";
+var autoAuthVerifyDomain = "";
+var autoHostApiDomain =  "";
+var autoKeywordCaller = [];
+var gaEventName = "";
+var gaEventType = "";
+var gaItemId = "";
+var gaItemName = "";
+var gaItemCategory = "";
+var loginAge    = "";
+var loginGender = "";
+var loginMmbrNum = "";
+var qbotCUID = "4ffe4f3c-7219-4bd2-a7ae-eba4aefc9b19";
+const digImgCode = "2"; // 디컨 커버 이미지 노출 구분 값 (0: 이미지 없음, 1: 디컨 이미지 사용, 2: 연계상품 이미지 사용(ex. 연관 종이책, 대표상품 등))
+
+/*
+    ESO = eventScriptObj (이벤트 스크립트 오브젝트)
+    [pc, mobile] = 0: gaEventTryCatch 구분값, 1: setWebRecommShop의 pc모바일 구분 값
+    btnName = 바로드림 | 장바구니 | 바로구매
+*/
+const ESO = { 
+                    "PC": {
+                          "recommType"      : "P"
+                         ,"gaEventType"     : "click_검색_PC"
+                    }
+                    ,"MO": {
+                          "recommType"      : "M"                        
+                         ,"gaEventType"     : "click_검색_MO"
+                    }
+                    ,"cart": {
+                        "dataType"      : "add_to_cart"
+                        ,"dataTypeDtl"  : "add_to_cart>검색_검색결과"
+                        ,"action"       : "장바구니"
+                        ,"func"         : clickAddCartProd
+                    }
+                    ,"result": {
+                        "종이책"      : "검색결과_교보문고"
+                        ,"PB"       : "검색결과_교보문고"
+                        ,"eBook"    : "검색결과_eBook"
+                        ,"핫트랙스"    : "검색결과_핫트랙스"
+                        ,"sam"      : "검색결과_sam"
+                        ,"캐스팅"     : "검색결과_캐스팅"
+                    }
+            };
+
+/*
+    const SCF; (SearchCommonFunctions)
+*/
+const SCF = {
+    "isEmpty" : function(str){
+        if(typeof str == "undefined" || str == null || str == "")
+            return true;
+        else
+            return false ;
+    },
+    "doAutoKeywordEmpty" : function(){
+        prevSearchKeyword = "";
+        if(!$("#hFrame").hasClass("active")){
+            $("#hFrame").addClass('active');
+        }
+        $(".noKeyword").show();
+        $(".inKeyword").hide();
+        rcntKeywordShow();
+    },
+    "getSearchKeyword" : function(){
+        return SCF.isEmpty($("#searchKeyword").val()) ? "" : $("#searchKeyword").val().trim();
+    },
+    "isSearchKeywordEmpty" : function(){
+        return SCF.getSearchKeyword() == "";
+    },
+    "getUserId" : function(){
+        return KbbJS.user != null && KbbJS.user.model != null ? KbbJS.user.model.sub : "";
+    }
+};    
+var gapTime = 175;
+var prevSearchKeyword = SCF.getSearchKeyword();
+
+$(document).ready(function() {
+
+    KbbJS.ready('util').then(function() {
+        autoSearchDomain = KbbJS.util.parseStageURL('/SCH/');
+        autoCompleteDomain = KbbJS.util.parseStageURL('/SCH/');
+        autoCsCenterDomain = KbbJS.util.parseStageURL('/ONK/') + 'cscenter';
+        autoKyoboProdDetailDomain = KbbJS.util.parseStageURL('/PDT/') + 'detail/';
+        autoEbookProdDetailDomain = KbbJS.util.parseStageURL('/EBP/') + 'dig/epd/ebook/';
+        autoEbookDumProdDetailDomain = KbbJS.util.parseStageURL('/EBK/') + 'dig/pnd/scholardetail/product?cmdtcode=';
+        autoSamProdDetailDomain = KbbJS.util.parseStageURL('/EBP/') + 'dig/epd/sam/';
+        autoSamDumProdDetailDomain = KbbJS.util.parseStageURL('/SAM/') + 'dig/pnd/scholardetail/sam-product?cmdtcode=';
+        autoHottracksProdDetailDomain = "https://hottracks.kyobobook.co.kr/ht/";
+        autoAuthorInfoDomain = KbbJS.util.parseStageURL('/ONK/') + 'service/profile/information?chrcCode=';
+        autoEventInfoDomain = KbbJS.util.parseStageURL('/EVT/') + 'detail/';
+        autoOrderDomain = KbbJS.util.parseStageURL('/ORD/');
+        autoBoApiDomain = "https://api-sdo.kyobobook.co.kr/";
+        autoLoginDomain = KbbJS.util.parseStageURL('/MBR/') + 'login';
+        autoAuthVerifyDomain = KbbJS.util.parseStageURL('/MBR/') + 'auth/verify/adult';
+        autoHostApiDomain = location.protocol+'//'+location.hostname;
+      
+        if(window.location.hostname.indexOf("ndev.kyobobook") > -1) {
+            //ndev
+            autoBoApiDomain = "https://api-sdo.ndev.kyobobook.co.kr/";        
+        }
+    });
+    
+    //키워드 값 넣기 - 통합검색 페이지 외 다른 페이지에서는 제거 필요
+    $('#searchKeyword').val($('#keywordHidden').val());
+
+    isRcntShow = getAutoCompleteCookie("rcntShow")=="off" ? false : true;
+    splitTempAll = new Array(0);
+
+    //gbCode값 세팅
+    setDefaultGbcode();
+    
+    //최근검색어 남기기-pc
+    if($("#searchKeyword").val() !=null && $("#searchKeyword").val() !=''){           
+        addRcentSchList($("#searchKeyword").val());
+    }
+    //메인 상단화면에 돋보기 클릭시 이벤트
+    $(".btn_gnb_search").click(function(){
+        
+        // ga360 검색 select 한국어화
+        let gbCodeKorean = ""
+        switch ($("#gbCode").val()) {
+            case "KBO" :
+            gbCodeKorean = "교보문고"
+            break;
+            case "EBK" :
+            gbCodeKorean = "eBook"
+            break;
+            case "SAM" :
+            gbCodeKorean = "sam"
+            break;
+            case "HTS" :
+            gbCodeKorean = "핫트랙스"
+            break;
+            default :
+            gbCodeKorean = "통합검색"
+            break;
+        }
+
+        if($("#searchKeyword").val() == "" && $("#searchBoxEventurl").val() != ""){
+            //ga360 검색버튼에 이벤트 추가
+            gaEventTryCatch('click_검색_PC', '검색', '', `검색_${gbCodeKorean}`, '', `${$("#searchKeyword").val()}`)
+
+            location.href = $("#searchBoxEventurl").val();
+        }else{
+            //ga360 검색버튼에 이벤트 추가
+            gaEventTryCatch('click_검색_PC', '검색', '', `검색_${gbCodeKorean}`, '', `${$("#searchKeyword").val()}`)
+
+            submitSearchKeywordPage();
+        }
+
+    });
+    
+    //메인 검색창 이벤트 설정
+    $("#searchKeyword").on({
+        //엔터키 이벤트 검색 가능 상태 변경
+        keydown: function (key) {    //엔터키가 검색어창에서 눌려진 상태면 검색 호출 가능 상태로 변경 - 레이어 팝업창 확인누를 시 엔터키 이벤트 호출 방지
+            if(key.keyCode == 13){
+                // ga360 검색 select 한국어화
+                let gbCodeKorean = ""
+                switch ($("#gbCode").val()) {
+                    case "KBO" :
+                    gbCodeKorean = "교보문고"
+                    break;
+                    case "EBK" :
+                    gbCodeKorean = "eBook"
+                    break;
+                    case "SAM" :
+                    gbCodeKorean = "sam"
+                    break;
+                    case "HTS" :
+                    gbCodeKorean = "핫트랙스"
+                    break;
+                    default :
+                    gbCodeKorean = "통합검색"
+                    break;
+                }
+                gaEventTryCatch('click_검색_PC', '검색', '', `검색_${gbCodeKorean}`, '', `${$("#searchKeyword").val()}`)
+                enterKeySubmitFlag = true;
+            }
+        },
+        //키워드 엔터키로 검색 설정
+        keyup: function (key) {
+            if(key.keyCode == 13 && enterKeySubmitFlag){
+                submitSearchKeywordPage();
+            }else {
+                if( !SCF.isSearchKeywordEmpty() ){
+                    var _keyword = SCF.getSearchKeyword();
+                    autoClearTimeout();
+                    if(prevSearchKeyword == _keyword){
+                        //console.log("Same keyword requested : " + prevSearchKeyword);
+                    }else if(prevSearchKeyword != _keyword){
+                        var _caller = setTimeout(function(e){
+                            //console.log("SendAutoKeyword : " + _keyword);
+                            prevSearchKeyword = _keyword;
+                            sendAutoKeyword(_keyword);
+                        }, gapTime);
+                        autoKeywordCaller.push(_caller);                         
+                    }
+                }else{
+                    SCF.doAutoKeywordEmpty();
+                }
+            }
+        },
+        click: function () {
+            if(!$("#hFrame").hasClass("active")) {
+                var keyword = $("#searchKeyword").val();
+                if(keyword != ""){
+                    sendAutoKeyword(keyword);    
+                }else{
+                    if(!$("#hFrame").hasClass("active")){
+                        $("#hFrame").addClass('active');
+                    }
+                    $(".noKeyword").show();
+                    $(".inKeyword").hide();
+                    rcntKeywordShow();                    
+                }
+            }            
+        }       
+         
+    });    
+    
+    $("#ageSel").on('selectmenuchange', function() {
+        ageChange(this.value);
+    });
+    
+    $("#genderSel").on('selectmenuchange', function() {
+        genderChange(this.value);
+    });
+    
+    // 자동완성 활성 영역이 아닌 곳 클릭 시 자동완성 창 닫기
+    $(document).on('click', function(e) {
+        if(e.target.id != "searchKeyword" && !$(e.target).hasClass("auto_complete_maintain") && $(e.target).parents('.auto_complete_maintain').length <= 0) {
+            $("#hFrame").removeClass('active');
+        }
+    });
+    
+    //닫기
+    $(document).on('click', '#close_search_auto', function() {
+        $("#hFrame").removeClass('active');
+    });
+    
+    //마우스 오버 시 상품 상세 영역 변경 
+    $(document).on('mouseenter','.img_box_mouseover',function(){
+        var id_num = $(this).attr('id').replace("img_box_mouseover_", "");
+        var editHtml = "";
+        var prodDetailDomain = "";
+        var cmdtDvsnCode = "";
+        var imgloadCmdtCode = "";        
+
+        //상세화면 링크 세팅
+        cmdtDvsnCode = splitTempAll[id_num][13]; 
+        if(cmdtDvsnCode == "DUM" && $("#gbCode").val() == "SAM"){
+            prodDetailDomain = getProdDetailDomain("SAM/"+cmdtDvsnCode)+item.CMDTCODE;            
+        }else if(cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "GFT" || cmdtDvsnCode == "BLURAY" || cmdtDvsnCode == "DUM"){
+            prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+$shop_obj[id_num].CMDTCODE;                
+        }else if(cmdtDvsnCode == "SAM"){
+            prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+$shop_obj[id_num].SALE_CMDTID+"?tabType=SAM";
+        }else{
+            prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+$shop_obj[id_num].SALE_CMDTID;
+        }
+        
+        //이미지 로팅 상품 아이디 세팅
+        if(splitTempAll[id_num][22] != "" && splitTempAll[id_num][23] == digImgCode){
+            imgloadCmdtCode = splitTempAll[id_num][22];
+        }else{
+            imgloadCmdtCode = $shop_obj[id_num].CMDTCODE;
+        }                          
+        
+        var ejbNm = getTransEjbNm(cmdtDvsnCode);
+        var removeEmTitle = splitTempAll[id_num][2];
+        var prodOnclick = "eval("+avoidQuotes($("a[href='"+prodDetailDomain+"'][onclick]").attr("onclick"))+")";
+        if(removeEmTitle != null){
+            removeEmTitle = removeEmTitle.replace(/<span class="mark">/gi, "").replace(/<\/span>/gi, "");
+            removeEmTitle = removeEmTitle.trim();            
+        }
+
+        editHtml += "                        <div class=\"prod_area horizontal\">";
+        
+        if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //핫트랙스
+            editHtml += "                                        <div class=\"prod_thumb_box size_lg type_square_round\">";        
+        }else if(cmdtDvsnCode == "GFC"){    //기프트카드
+            editHtml += "                                        <div class=\"prod_thumb_box size_lg type_gift_card\">";
+        }else if(cmdtDvsnCode == "EBK" || cmdtDvsnCode == "AUD" || cmdtDvsnCode == "VID" || cmdtDvsnCode == "DUM" || cmdtDvsnCode == "SAM"){    //이북
+            editHtml += "                                        <div class=\"prod_thumb_box size_lg type_bookcover\" onclick=\""+ prodOnclick +"\" >";
+        }else{
+            editHtml += "                                        <div class=\"prod_thumb_box size_lg\" onclick=\""+ prodOnclick +"\" >";
+        }        
+        
+        //핫트랙스인 경우 이미지url값으로 이미지를 출력하고 다른 몰인 경우는 공통에서 이미지를 로드함
+        if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //핫트랙스
+            editHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_link\">";
+            if(splitTempAll[id_num][15] == 1 || splitTempAll[id_num][15] == 19){
+                editHtml += "                                                <span class=\"img_box adult\">"
+                editHtml += "                                                </span>";                                
+            }else if(splitTempAll[id_num][14] == "" || splitTempAll[id_num][14] == "0"){
+                editHtml += "                                                <span class=\"img_box no_img\">"
+                editHtml += "                                                </span>";                
+            }else{
+                editHtml += "                                                <span class=\"img_box\">"
+                editHtml += "                                                    <img src=\""+splitTempAll[id_num][14]+"\" alt=\""+$shop_obj[id_num].SALE_CMDTID+"\" onerror=\"autoOnErrorImage(this);\">"        
+                editHtml += "                                                </span>";                
+            }
+            editHtml += "                                            </a>";        
+        }else{
+            editHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_link\">";
+            editHtml += "                                                <span class=\"img_box\">"
+            editHtml += "                                                    <img class=\"prod_img_load auto_temp_img\" data-kbbfn=\"s3-image\" data-kbbfn-pid=\""+$shop_obj[id_num].SALE_CMDTID+"\" data-kbbfn-bid=\""+imgloadCmdtCode+"\" data-kbbfn-type=\""+$shop_obj[id_num].SALE_CMDT_DVSN_CODE+"\" data-kbbfn-attr=\"src\" data-kbbfn-size=\"200x0\" data-kbbfn-title=\""+removeEmTitle+"\" data-kbbfn-adult=\""+splitTempAll[id_num][15]+"\"/>";
+            if(splitTempAll[id_num][24] != "" && splitTempAll[id_num][25] == "1"){
+                editHtml += "                                                    <div class=\"prod_set\">"+splitTempAll[id_num][24]+"권 세트</div>";
+            }                    
+            editHtml += "                                                </span>";
+            editHtml += "                                            </a>";
+        }        
+        editHtml += "                            </div>";
+        
+        editHtml += "                    <div class=\"prod_info_box\">";
+        editHtml += "                        <a href=\""+prodDetailDomain+"\" class=\"prod_info\" onclick=\""+ prodOnclick +"\" >";
+        editHtml += "                            <span class=\"prod_name\">["+ejbNm+"] "+splitTempAll[id_num][2]+"</span>";
+        editHtml += "                        </a>";
+        
+        if(cmdtDvsnCode != "PBC"){
+            if(cmdtDvsnCode == "CUL"){
+                editHtml += "                        <span class=\"prod_author\">"+splitTempAll[id_num][3]+"</span>";
+            }else if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){
+                editHtml += "                        <span class=\"prod_author\">"+splitTempAll[id_num][4]+"</span>";
+            }else{
+                editHtml += "                        <span class=\"prod_author\">"+splitTempAll[id_num][3]+"·"+splitTempAll[id_num][4]+"</span>";
+            }
+        }
+        
+        if(cmdtDvsnCode == "EBK" && splitTempAll[id_num][12] == "1"){  //coupon_yn 이북연재여부
+            editHtml += "                        <div class=\"prod_purchase_state\">대여/소장 가능</div>";
+        }else if(cmdtDvsnCode == "EBK" && splitTempAll[id_num][11] == "1"){  //free_send_yn 이북무료도서
+            editHtml += "                        <div class=\"prod_purchase_state\">무료도서</div>";
+        }else if((cmdtDvsnCode == "EBK" || cmdtDvsnCode == "AUD" || cmdtDvsnCode == "VID") && splitTempAll[id_num][8] == "0"){  //eBook, 오디오북, 동영상북인데 가격이 0인 상품
+            editHtml += "                        <div class=\"prod_purchase_state\">무료도서</div>";
+        }else if(cmdtDvsnCode == "SAM"){  //SAM
+            editHtml += "                        <div class=\"prod_price\">";
+            editHtml += "                            <div class=\"prod_condition\">";
+            editHtml += "                            </div>";            
+            editHtml += "                        </div>";
+        }else{
+            editHtml += "                        <div class=\"prod_price\">";
+            editHtml += "                            <span class=\"percent\">"+parseInt(splitTempAll[id_num][9])+"%"+"</span>";
+            editHtml += "                            <span class=\"price\">";
+            editHtml += "                                <span class=\"val\">"+(parseInt(splitTempAll[id_num][8])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"</span>";
+            editHtml += "                                <span class=\"unit\">원</span>";
+            editHtml += "                            </span>";
+            editHtml += "                            <span class=\"price_normal\">";
+            editHtml += "                                <span class=\"text\">정가</span>";
+            editHtml += "                                <s class=\"val\">"+(parseInt(splitTempAll[id_num][7])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"원</s>";
+            editHtml += "                            </span>";
+            editHtml += "                        </div>";        
+        }
+        if(cmdtDvsnCode != "SAM"){
+            editHtml += "                        <div class=\"prod_point_desc\">통합포인트 "+parseInt(splitTempAll[id_num][20])+"% 적립 <span class=\"fw_bold\">("+(parseInt(splitTempAll[id_num][10])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"원)</span></div>";            
+        }    
+        editHtml += "                    </div>";       
+        editHtml += "                </div>";
+        
+        if(splitTempAll[id_num][21] != ""){
+            editHtml += "                <div class=\"prod_summary_box\">";
+            editHtml += "                    <div class=\"info_text font_size_xxs\">"+splitTempAll[id_num][21];
+            editHtml += "                    </div>";
+            editHtml += "                </div>";              
+        }
+        
+        $("#mouse_over_detail").html(editHtml);
+        prodImageLoad(".auto_temp_img");
+    });
+
+    // GA360 통합검색일때는 해당 페이지뷰 실행
+    if(window.location.origin.indexOf("search.") != -1){
+        if (window.location.pathname.indexOf("search") != -1) {
+            if(window.location.search.indexOf("keyword") != -1){
+                const pageDict = {
+                    'https://search.kyobobook.co.kr/search': '통합검색'
+                }
+                const pageviewObj = {}
+                const ga360 = KbbJS.getOption('ga360.welcome.var')
+                const user = navigator.userAgent;
+                pageviewObj.ep_visit_channelOption = 'PC'
+                let a = (navigator.userAgent || navigator.vendor || window.opera);
+                if (ga360.browserInfo.indexOf("GA_Android") > -1 || ga360.browserInfo.indexOf("GA_iOS_WK") > -1) {
+                    pageviewObj.ep_visit_channelOption = 'APP'
+                } 
+                else if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) {
+                    pageviewObj.ep_visit_channelOption = 'MOWEB'
+                }
+                pageviewObj.ep_visit_siteOption = '교보문고'
+                if (window.location.search.indexOf("gbCode") != -1) {
+                    // ebook_search : target=ebook
+                    // sam_search : target=sam
+                    var searchList = window.location.search.split("gbCode=")
+                    var searchCode = searchList[1].split("&")[0]
+                    // ebook, sam
+                    if (searchCode == "EBK") {
+                    pageviewObj.ep_visit_siteOption = "ebook"
+                    } else if (searchCode == "SAM") {
+                    pageviewObj.ep_visit_siteOption = 'sam'
+                    } else if (searchCode == "HTS") {
+                    pageviewObj.ep_visit_siteOption = '핫트랙스'
+                    }        
+                }
+                // /pod/ 가 들어가있는 모든 url 및 상품상세 페이지 > POD 표시가 있는 경우 "POD"로 데이터 수집
+                if (window.location.pathname.indexOf("/pod/") != -1) {
+                    pageviewObj.ep_visit_siteOption = 'POD'
+                }
+                if(window.location.search.indexOf("keyword") != -1){
+                    var searchList = window.location.search.split("keyword=")
+                    var searchKeyword = searchList[1].split("&")[0]
+                    pageviewObj.ep_search_internalSearchWord = decodeURIComponent(searchKeyword)
+                    pageviewObj.ep_search_SearchResult = "Y"
+                    if(document.getElementsByClassName("result_count")[0]){
+                        if(document.getElementsByClassName("result_count")[0].getElementsByClassName("fc_green")[0].textContent.startsWith("0")){
+                        pageviewObj.ep_search_SearchResult = "N"
+                        }
+                    }
+                }
+                pageviewObj.ep_test_DevProd = "개발"
+                pageviewObj.ep_page_fullUrl = window.location.href
+                pageviewObj.ep_page_noParameterUrl = window.location.origin + window.location.pathname
+                pageviewObj.title = window.document.title //'교보문고>웰컴>웰컴 메인'
+                pageviewObj.location = window.location.href // 'https://onk.ndev.kyobobook.co.kr/dd/ee'
+                if (pageDict[window.location.origin + window.location.pathname]) {
+                    pageviewObj.ep_test_DevProd = "운영"
+                    pageviewObj.title = pageDict[window.location.origin + window.location.pathname]
+                }
+                pageviewObj.up_loginState = "N"
+                if(document.cookie.split("accessToken=")[1]){
+                    var accessToken = document.cookie.split("accessToken=")[1].split(";")[0];
+                    if (accessToken) {
+                    const tokenJson = window.ga360.parseToken(accessToken)
+                    const mynum = tokenJson["sub"]
+                    const objuid = window.ga360.SHA256(mynum)
+                    pageviewObj.ep_uid = objuid
+                    pageviewObj.up_loginState = "Y"
+                    }
+                }
+                console.log('-------GA_Screen----------')
+                window.ga360.GA_Screen(pageviewObj)
+                console.log('-------GA_Screen-EndEnd---------')
+            }
+        }
+    }
+
+    ESO["buy"]      = {"dataType": "begin_checkout", "dataTypeDtl": "begin_checkout>검색결과", "action": "바로구매", "func": window['clickDirectOrder']};   // 바로구매
+    ESO["pickup"]   = {"dataType": "begin_checkout", "dataTypeDtl": "begin_checkout>검색결과", "action": "바로드림", "func": window['clickDirectPickUp']};   // 바로드림
+    try{
+        setLoginInfo();
+        SCE.qbotSearchInit();
+    }catch(e){ console.log(e); }
+});
+
+function isDevHost (host) {
+    if (host == null) host = window.location.hostname;
+    return /^[\w]+\.(ndev)\.kyobobook/.test(host);
+}
+
+function autoClearTimeout(){
+    if(autoKeywordCaller.length > 0){
+        for(var i=0; i<autoKeywordCaller.length; i++){
+            try{
+                clearTimeout(autoKeywordCaller.pop());
+            }catch(e){
+                //console.log("Clear Timeout Error");
+            }
+        }
+    }
+}
+
+//초기 gbCode값 설정
+function setDefaultGbcode(){
+
+    var current_url = document.location.hostname;
+    current_url = current_url.split(".")[0];
+
+    if(current_url == "ebook"){
+        $("#gbCode").val("EBK");
+    }else if(current_url == "sam"){
+        $("#gbCode").val("SAM");
+    }else if(current_url == "hottracks"){
+        $("#gbCode").val("HTS");
+    }/*else{    //검색 페이지에만 추가
+        if(getAutoSearchParam('gbCode') == ""){
+            var targetVal  = getAutoSearchParam('target');
+            if(targetVal == "kyobo"){
+                $("#gbCode").val("KBO");
+            }else if(targetVal == "ebook"){
+                $("#gbCode").val("EBK");   
+            }else if(targetVal == "sam"){
+                $("#gbCode").val("SAM");   
+            }else if(targetVal == "hottracks"){
+                $("#gbCode").val("HTS");   
+            }else{
+                var upperTargetVal  = getAutoSearchParam('upperTarget');
+                if(upperTargetVal == "kyobo"){
+                    $("#gbCode").val("KBO");
+                }else if(upperTargetVal == "ebook"){
+                    $("#gbCode").val("EBK");   
+                }else if(upperTargetVal == "sam"){
+                    $("#gbCode").val("SAM");   
+                }else if(upperTargetVal == "hottracks"){
+                    $("#gbCode").val("HTS");   
+                }else{
+                    $("#gbCode").val("TOT");                    
+                }
+            }
+        }else{
+            $("#gbCode").val(getAutoSearchParam('gbCode'));
+        }
+    }*/
+}
+
+//자동검색어 쿠키 
+function getAutoCompleteCookie (name) {
+    var arg = name + "=";
+    var alen = arg.length;
+    var clen = document.cookie.length;
+    var i = 0;
+    while (i < clen) {
+    var j = i + alen;
+        if (document.cookie.substring(i, j) == arg)
+            return getAutoCompleteCookieVal (j);
+        i = document.cookie.indexOf(" ", i) + 1;
+        if (i == 0) break; 
+    }
+    return null;
+}
+
+function getAutoCompleteCookieVal (offset) {
+    var endstr = document.cookie.indexOf (";", offset);
+    if (endstr == -1)
+        endstr = document.cookie.length;
+    return unescape(document.cookie.substring(offset, endstr));
+}
+
+function setAutoCompleteCookie (name, value, expire) {
+    var expire_date = new Date(expire);
+    var domain = ".kyobobook.co.kr";
+    document.cookie = name + "=" + escape (value) + "; path=/; expires=" + expire_date.toGMTString() + "; domain=" + domain + ";";
+}
+
+function delAutoCompleteCookie(name) {
+    var today = new Date();
+    var expire_date = new Date(today.getTime() - 60*60*24*1000);
+    var domain = ".kyobobook.co.kr";
+    document.cookie = name + "=; path=/; expires=" + expire_date.toGMTString() + "; domain=" + domain + ";";     
+}
+
+/**
+ * 자동완성 호출
+ * @param value 키워드
+ * @returns
+ */
+function sendAutoKeyword(value){
+    autoClearTimeout();
+    $(".noKeyword").hide();
+    $(".inKeyword").show();
+    sendAutoKeywordShop(value);
+}
+
+//자동 완성 상품 정보 호출
+function sendAutoKeywordShop(value){
+    var check_val =  checkKeywordBlank(value);
+    var check_gbCode = $("#gbCode option:selected").val();
+    
+    $.ajax({
+        type: "GET",
+        dataType : "jsonp",
+        jsonpCallback: "autocompleteShop",
+        url : autoCompleteDomain + "srp/api/v1/search/autocomplete/shop",      
+        data : {"keyword" : check_val, "gbCode" : check_gbCode, "len" : 12, "ht" : "<span class=\"mark\">:</span>"},
+        success: function(rst) {
+            if( SCF.isSearchKeywordEmpty() ){
+                SCF.doAutoKeywordEmpty();
+                return;
+            }
+            if(rst.data.realSize > 0 && rst.resultCode == 200){
+                var addHtml = "";
+            
+                //상품 영역
+                addHtml += "<div class=\"scroll_wrap\">";
+                addHtml += "    <div class=\"related_product_area\">";
+                addHtml += "        <div class=\"col_left_box\" >";
+                addHtml += "            <div class=\"btn_wrap full\" id=\"shortcut_link\">";
+                addHtml += "            </div>";
+                addHtml += "            <div class=\"related_prod_swiper_wrap\">";
+                addHtml += "                <div class=\"related_prod_swiper swiper-container\">";
+                addHtml += "                    <ul class=\"swiper-wrapper\" id=\"shop_list\">";            
+                addHtml += "                    </ul>";
+                addHtml += "                </div>";
+                addHtml += "                <div class=\"swiper_control_box\">";  
+                addHtml += "                    <button type=\"button\" class=\"swiper-button-prev\"><span class=\"hidden\">이전</span></button>";  
+                addHtml += "                    <div class=\"swiper-pagination\"></div>";  
+                addHtml += "                    <button type=\"button\" class=\"swiper-button-next\"><span class=\"hidden\">다음</span></button>";  
+                addHtml += "                </div>";     
+                addHtml += "           </div>";
+                addHtml += "       </div>";     
+                addHtml += "       <div class=\"col_right_box\">";
+                addHtml += "            <div class=\"related_prod_detail_wrap\" id=\"mouse_over_detail\">";
+                addHtml += "                <div class=\"prod_area horizontal\">";  
+                addHtml += "                </div>";
+                addHtml += "                <div class=\"prod_summary_box\">";
+                addHtml += "                    <div class=\"info_text font_size_xxs\">";
+                addHtml += "                    </div>";
+                addHtml += "                </div>";
+                addHtml += "            </div>";
+                addHtml += "        </div>";
+                addHtml += "    </div>";
+            
+                //인물 영역            
+                addHtml += "    <div class=\"related_contents_area\">";
+                addHtml += "        <div class=\"col_left_box\" id=\"author_area\">";
+                addHtml += "            <div class=\"title_wrap title_size_def\">";
+                addHtml += "                <p class=\"title_heading\">인물</p>";
+                addHtml += "            </div>";
+                addHtml += "            <div class=\"related_author_list_wrap\">";
+                addHtml += "                <ul class=\"related_author_list\" id=\"author_list\">";
+                addHtml += "                </ul>";
+                addHtml += "            </div>";
+                addHtml += "        </div>";
+            
+                //이벤트 영역            
+                addHtml += "        <div class=\"col_right_box\" id=\"event_area\">";
+                addHtml += "            <div class=\"title_wrap title_size_def\">";
+                addHtml += "                <p class=\"title_heading\">이벤트</p>";
+                addHtml += "                <div class=\"right_area control_related_event \">";
+                addHtml += "                    <div class=\"swiper_control_box\">";
+                addHtml += "                        <button type=\"button\" class=\"swiper-button-prev\"><span class=\"hidden\">이전</span></button>";
+                addHtml += "                        <div class=\"swiper-pagination\"></div>";
+                addHtml += "                        <button type=\"button\" class=\"swiper-button-next\"><span class=\"hidden\">다음</span></button>";
+                addHtml += "                    </div>";
+                addHtml += "                </div>";
+                addHtml += "            </div>";
+                addHtml += "            <div class=\"related_event_swiper_wrap\">";
+                addHtml += "                <div class=\"event_swiper_wrap\">";
+                addHtml += "                    <div class=\"swiper-container\">";                
+                addHtml += "                        <ul class=\"event_list swiper-wrapper\" id=\"event_list\">";
+                addHtml += "                        </ul>";
+                addHtml += "                    </div>";                
+                addHtml += "                </div>";
+                addHtml += "            </div>";
+                addHtml += "        </div>";
+                addHtml += "    </div>";
+                addHtml += "    <div class=\"util_area\">";
+                addHtml += "        <a href=\"javascript:goDetailSearch();\" class=\"btn_xs btn_light_gray\" onclick=\"gaEventTryCatch('click_검색_PC', '검색도움', '', '상세검색', '', '')\"><span class=\"ico_search\"></span><span class=\"text\">상세검색</span></a>";
+                addHtml += "        <a href=\"javascript:goCsCenter();\" class=\"btn_xs btn_line_gray\" onclick=\"gaEventTryCatch('click_검색_PC', '검색도움', '', '도움말', '', '')\"><span class=\"ico_link\"></span><span class=\"text\">도움말</span></a>";
+                addHtml += "    </div>";
+                addHtml += "</div>";
+                
+                addHtml += "<button type=\"button\" class=\"btn_layer_close\" id=\"close_search_auto\"><span class=\"ico_layer_close\"></span><span class=\"hidden\">닫기</span></button>";
+                
+                $(".inKeyword").html(addHtml);
+                $("#hFrame").addClass('active');                    
+                
+                sendAutoKeywordShortcut(value);
+                sendAutoKeywordEvent(value);
+                sendAutoKeywordAuthor(value);                
+                getAutoKeywordShop(rst);                    
+            }else{
+               $("#hFrame").removeClass('active') 
+            }
+        }
+    });
+}
+    
+//자동 완성 이벤트 정보 호출
+function sendAutoKeywordEvent(value){
+    var check_val =  checkKeywordBlank(value);
+    $.ajax({
+        type: "GET",
+        dataType : "jsonp",
+        jsonpCallback: "searchAutoEvent",
+        url : autoCompleteDomain + "srp/api/v1/search/autocomplete/event",        
+        data : {"keyword" : check_val, "len" : 9},
+        success: function(rst) {
+            if(rst.data.realSize > 0 && rst.resultCode == 200){
+                getAutoKeywordEvent(rst);    
+            }else{
+                var addEventHtml = "";
+                addEventHtml += "            <div class=\"title_wrap title_size_def\">";
+                addEventHtml += "                <p class=\"title_heading\">이벤트</p>";
+                addEventHtml += "                <div class=\"right_area control_related_event\">";
+                addEventHtml += "                    <div class=\"swiper_control_box\">";
+                addEventHtml += "                        <button type=\"button\" class=\"swiper-button-prev\"><span class=\"hidden\">이전</span></button>";
+                addEventHtml += "                        <div class=\"swiper-pagination\"></div>";
+                addEventHtml += "                        <button type=\"button\" class=\"swiper-button-next\"><span class=\"hidden\">다음</span></button>";
+                addEventHtml += "                    </div>";
+                addEventHtml += "                </div>";
+                addEventHtml += "            </div>";
+                addEventHtml += "            <div class=\"no_data size_sm\">";
+                addEventHtml += "                <div class=\"no_data_desc\">관련 이벤트가 없습니다.</div>";
+                addEventHtml += "            </div>";
+                $("#event_area").html(addEventHtml);
+            }
+        } 
+    });
+}
+
+//자동 완성 인물 정보 호출
+function sendAutoKeywordAuthor(value){
+    var check_val = checkKeywordBlank(value);
+    $.ajax({
+        type: "GET",
+        dataType : "jsonp",
+        jsonpCallback: "searchAutoAuthor",
+        url : autoCompleteDomain + "srp/api/v1/search/autocomplete/author",          
+        data : {"keyword" : check_val, "len" : 3},
+        success: function(rst) {
+            if(rst.data.realSize > 0 && rst.resultCode == 200){
+                getAutoKeywordAuthor(rst);
+            }else{
+                var addAuthorHtml = ""
+                addAuthorHtml += "            <div class=\"title_wrap title_size_def\">";
+                addAuthorHtml += "                <p class=\"title_heading\">인물</p>";
+                addAuthorHtml += "            </div>";
+                addAuthorHtml += "            <div class=\"no_data size_sm\">";
+                addAuthorHtml += "                <div class=\"no_data_desc\">관련 인물 정보가 없습니다.</div>";
+                addAuthorHtml += "            </div>";
+                $("#author_area").html(addAuthorHtml);
+            }
+        } 
+    });    
+}
+
+//자동 완성 바로드림 링크 호출
+function sendAutoKeywordShortcut(value){
+    var check_val =  checkKeywordBlank(value);
+    $.ajax({
+        type: "GET",
+        dataType : "jsonp",
+        jsonpCallback: "searchAutoShortcut",
+        url : autoCompleteDomain + "srp/api/v1/search/autocomplete/shortcut",          
+        data : {"keyword" : check_val, "len" : 1, "gb" : "P"},
+        success: function(rst) {
+            if(rst.data.realSize > 0 && rst.resultCode == 200){
+                var addShortcutHtml = "<a href=\""+rst.data.resultDocuments[0].shortcut_LINK+"\" class=\"btn_sm btn_line_gray\"><span class=\"text\">"+rst.data.resultDocuments[0].shortcut_NAME+" 바로가기</span><span class=\"ico_arw\"></span></a>";
+                $("#shortcut_link").html(addShortcutHtml);                    
+            }else{
+                $("#shortcut_link").html("");                
+            }
+        } 
+    });
+}    
+
+//자동완성 - 상품 영역 
+function getAutoKeywordShop(rst) {
+    $shop_obj = rst.data.resultDocuments;
+    //var $objLink = data.link;
+    //var orderUrl = autoautoOrderDomain;
+    //var url = autoSearchDomain;
+    var addShopHtml = "";
+    var ejbNm = "";
+    var removeEmTitle = "";
+    var prodDetailDomain = "";
+    var cmdtDvsnCode = "";
+    var imgloadCmdtCode = "";
+    var searchKeyword = avoidQuotes($("#searchKeyword").val());
+
+    splitTempAll = new Array($shop_obj.length);
+    
+    for (var i = 0; i < splitTempAll.length; i++) {
+        splitTempAll[i] = new Array(2);
+    }
+
+    $.each($shop_obj, function(i){ //일반리스트
+
+        var item = $shop_obj[i];
+        var check_gbCode = $("#gbCode option:selected").val();
+        if(check_gbCode == "TOT"){
+            var splitTemp = item.TOT_RELATE_HTML_LIST.split("$@");
+        }else{
+            var splitTemp = item.RELATE_HTML_LIST.split("$@");
+        }
+
+        //"데이터 정의 : 
+        //0|바코드 //1|분야명 //2|상품명      //3|저자     //4|출판사 //5|출판년도
+        //6|출판월 //7|정가  //8|판매가      //9|할인율    //10|적립포인트
+        //11|무료배송여부    //12|할인쿠폰여부 /13|상품구분  //14|이미지URL //15|성인유무(0,19)
+        //16|★          //17|음반/DVD 일시품절 여부 //18|이북시리즈 여부 //19|샘 무제한 여부
+        //20|통합포인트적립율   //21|상세정보   //22|종이책 cmdtcode   //23|커버이지지 유무(0,1)
+        //24|시리즈(세트)수   //25|띠지 여부   //26|판매상품분류코드 sale_cmdt_clst_code
+
+        splitTempAll[i][0] = splitTemp[0];
+        splitTempAll[i][1] = splitTemp[1];
+        splitTempAll[i][2] = splitTemp[2];
+        splitTempAll[i][3] = splitTemp[3];
+        splitTempAll[i][4] = splitTemp[4];
+        splitTempAll[i][5] = splitTemp[5];
+        splitTempAll[i][6] = splitTemp[6];
+        splitTempAll[i][7] = splitTemp[7];
+        splitTempAll[i][8] = splitTemp[8];
+        splitTempAll[i][9] = splitTemp[9];
+        splitTempAll[i][10] = splitTemp[10];
+        splitTempAll[i][11] = splitTemp[11];
+        splitTempAll[i][12] = splitTemp[12];
+        splitTempAll[i][13] = splitTemp[13];
+        splitTempAll[i][14] = splitTemp[14];
+        splitTempAll[i][15] = splitTemp[15];
+        splitTempAll[i][16] = splitTemp[16];
+        splitTempAll[i][17] = splitTemp[17];
+        splitTempAll[i][18] = splitTemp[18];
+        splitTempAll[i][19] = splitTemp[19];
+        splitTempAll[i][20] = splitTemp[20];
+        splitTempAll[i][21] = splitTemp[21];
+        splitTempAll[i][22] = splitTemp[22];
+        splitTempAll[i][23] = splitTemp[23];
+        splitTempAll[i][24] = splitTemp[24];
+        splitTempAll[i][25] = splitTemp[25];                
+        splitTempAll[i][26] = splitTemp[26];
+
+        //상세화면 링크 세팅
+        cmdtDvsnCode = splitTempAll[i][13]; 
+        ejbNm = getTransEjbNm(cmdtDvsnCode);        
+        if(cmdtDvsnCode == "DUM" && $("#gbCode").val() == "SAM"){
+            prodDetailDomain = getProdDetailDomain("SAM/"+cmdtDvsnCode)+item.CMDTCODE;            
+        }else if(cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "GFT" || cmdtDvsnCode == "BLURAY" || cmdtDvsnCode == "DUM"){
+            prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+item.CMDTCODE;                
+        }else if(cmdtDvsnCode == "SAM"){
+            prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+item.SALE_CMDTID+"?tabType=SAM";
+        }else{
+            prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+item.SALE_CMDTID;
+        }
+        
+        //이미지 로팅 상품 아이디 세팅
+        if(splitTempAll[i][22] != "" && splitTempAll[i][23] == digImgCode){
+            imgloadCmdtCode = splitTempAll[i][22];
+        }else{
+            imgloadCmdtCode = item.CMDTCODE;
+        }
+        
+        removeEmTitle = splitTempAll[i][2];
+        
+        if(i == 0 || i%3 == 0){
+            addShopHtml += "                        <li class=\"swiper-slide\">";
+            addShopHtml += "                            <ul class=\"prod_row_list\">";                    
+        }
+
+        addShopHtml += "                                <li class=\"prod_item\">"; 
+        addShopHtml += "                                    <div class=\"prod_area horizontal\">";               
+
+        // GA360 아이템 카테고리
+        var item_category = cmdtDvsnCode === "EBK" ? 'eBook' : '종이책';
+        var prodName = avoidQuotes(splitTempAll[i][2]);
+
+        if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //핫트랙스
+            addShopHtml += "                                        <div class=\"prod_thumb_box size_xs type_square_round\">";        
+        }else if(cmdtDvsnCode == "GFC"){    //기프트카드
+            addShopHtml += "                                        <div class=\"prod_thumb_box size_xs type_gift_card\">";
+        }else if(cmdtDvsnCode == "EBK" || cmdtDvsnCode == "AUD" || cmdtDvsnCode == "VID" || cmdtDvsnCode == "DUM" || cmdtDvsnCode == "SAM"){    //이북
+            addShopHtml += "                                        <div class=\"prod_thumb_box size_xs type_bookcover\" onclick=\"ga360.EcommerceSet('select_item', [{item_id: '" + item.SALE_CMDTID + "', item_name: " + prodName + ", item_category: '" + item_category + "', item_list_name: '검색_자동완성'}], {currency: 'KRW'}, {ep_ecommerce_section: 'select_item>검색_자동완성', ep_item_id: '상품1_" + item.SALE_CMDTID + "', ep_item_name: '상품1_'+"+ prodName + ", ep_search_internalSearchWord: " + searchKeyword + "}, {});\">"
+        }else{
+            addShopHtml += "                                        <div class=\"prod_thumb_box size_xs\" onclick=\"ga360.EcommerceSet('select_item', [{item_id: '" + item.SALE_CMDTID + "', item_name: " + prodName + ", item_category: '" + item_category + "', item_list_name: '검색_자동완성'}], {currency: 'KRW'}, {ep_ecommerce_section: 'select_item>검색_자동완성', ep_item_id: '상품1_" + item.SALE_CMDTID + "', ep_item_name: '상품1_'+"+ prodName + ", ep_search_internalSearchWord: " + searchKeyword + "}, {});\">"
+        }
+        
+        //핫트랙스인 경우 이미지url값으로 이미지를 출력하고 다른 몰인 경우는 공통에서 이미지를 로드함
+        if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //핫트랙스
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_link\">";
+            if(splitTempAll[i][15] == 1 || splitTempAll[i][15] == 19){
+                addShopHtml += "                                                <span class=\"img_box adult img_box_mouseover\" id=\"img_box_mouseover_"+i+"\">"
+                addShopHtml += "                                                </span>";                                
+            }else if(splitTempAll[i][14] == "" || splitTempAll[i][14] == "0"){
+                addShopHtml += "                                                <span class=\"img_box no_img img_box_mouseover\" id=\"img_box_mouseover_"+i+"\">"
+                addShopHtml += "                                                </span>";                
+            }else{
+                addShopHtml += "                                                <span class=\"img_box img_box_mouseover\" id=\"img_box_mouseover_"+i+"\">"
+                addShopHtml += "                                                    <img src=\""+splitTempAll[i][14]+"\" alt=\""+item.SALE_CMDTID+"\" onerror=\"autoOnErrorImage(this);\">"        
+                addShopHtml += "                                                </span>";                
+            }
+            addShopHtml += "                                            </a>";        
+        }else{
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_link\">";
+            addShopHtml += "                                                <span class=\"img_box img_box_mouseover\" id=\"img_box_mouseover_"+i+"\">"
+            addShopHtml += "                                                    <img class=\"prod_img_load auto_result_img\" data-kbbfn=\"s3-image\" data-kbbfn-pid=\""+item.SALE_CMDTID+"\" data-kbbfn-bid=\""+imgloadCmdtCode+"\" data-kbbfn-type=\""+item.SALE_CMDT_DVSN_CODE+"\" data-kbbfn-attr=\"src\" data-kbbfn-size=\"100x0\" data-kbbfn-title=\""+removeEmTitle+"\" data-kbbfn-adult=\""+splitTempAll[i][15]+"\"/>";
+            if(splitTempAll[i][24] != "" && splitTempAll[i][25] == "1"){
+                addShopHtml += "                                                    <div class=\"prod_set\">"+splitTempAll[i][24]+"권 세트</div>";
+            }
+            addShopHtml += "                                                </span>";
+            addShopHtml += "                                            </a>";
+        }
+        
+        addShopHtml += "                                        </div>";
+        addShopHtml += "                                        <div class=\"prod_info_box size_xs\">";
+        
+        //상품군별 세부 내용 분기 처리
+        if(cmdtDvsnCode == "POD"){
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <span class=\"prod_author\">"+splitTempAll[i][3]+"("+splitTempAll[i][4]+")"+"</span>";
+            addShopHtml += "                                            <div class=\"prod_price\">";
+            addShopHtml += "                                                <span class=\"percent\">"+parseInt(splitTempAll[i][9])+"%"+"</span>";
+            addShopHtml += "                                                <span class=\"price\">";
+            addShopHtml += "                                                    <span class=\"val\">"+(parseInt(splitTempAll[i][8])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"</span>";
+            addShopHtml += "                                                    <span class=\"unit\">원</span>";
+            addShopHtml += "                                                </span>";
+            addShopHtml += "                                            </div>";            
+        }else if(cmdtDvsnCode == "CUL"){    //컬쳐
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <span class=\"prod_author\">"+splitTempAll[i][3]+"</span>";
+            addShopHtml += "                                            <div class=\"prod_price\">";
+            addShopHtml += "                                                <span class=\"percent\">"+parseInt(splitTempAll[i][9])+"%"+"</span>";
+            addShopHtml += "                                                <span class=\"price\">";
+            addShopHtml += "                                                    <span class=\"val\">"+(parseInt(splitTempAll[i][8])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"</span>";
+            addShopHtml += "                                                    <span class=\"unit\">원</span>";
+            addShopHtml += "                                                </span>";
+            addShopHtml += "                                            </div>";            
+        }else if(cmdtDvsnCode == "PBC"){    //교보굿즈
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <div class=\"prod_price_cart\">";
+            addShopHtml += "                                                <div class=\"prod_price\">";
+            addShopHtml += "                                                    <span class=\"percent\">"+parseInt(splitTempAll[i][9])+"%"+"</span>";
+            addShopHtml += "                                                    <span class=\"price\">";
+            addShopHtml += "                                                        <span class=\"val\">"+(parseInt(splitTempAll[i][8])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"</span>";
+            addShopHtml += "                                                        <span class=\"unit\">원</span>";
+            addShopHtml += "                                                    </span>";
+            addShopHtml += "                                                </div>";
+            addShopHtml += "                                                <div class=\"right_box\">";
+            addShopHtml += "                                                    <button type=\"button\" class=\"btn_cart_circle\" onclick=\"searchClickEvent('cart', 'PC', 'PB', '"+item.SALE_CMDTID+"', "+prodName+", '"+item.SALE_CMDT_DVSN_CODE_SUB+"', '"+splitTempAll[i][26]+"', '"+item.SALE_CMDT_GRP_DVSN_CODE+"', '"+item.CMDTCODE+"', '0', '"+splitTempAll[i][15]+"');\"><span class=\"ico_cart\"></span><span class=\"hidden\">장바구니 담기</span></button>";
+            addShopHtml += "                                                </div>";
+            addShopHtml += "                                            </div>";            
+        }else if(cmdtDvsnCode == "EBK" && splitTempAll[i][12] == "1"){  //coupon_yn 이북연재여부
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <span class=\"prod_author\">"+splitTempAll[i][3]+"("+splitTempAll[i][4]+")"+"</span>";
+            addShopHtml += "                                            <div class=\"prod_purchase_state\">대여/소장 가능</div>";
+        }else if(cmdtDvsnCode == "EBK" && splitTempAll[i][11] == "1"){  //free_send_yn 이북무료도서
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <span class=\"prod_author\">"+splitTempAll[i][3]+"("+splitTempAll[i][4]+")"+"</span>";
+            addShopHtml += "                                            <div class=\"prod_purchase_state\">무료도서</div>";            
+        }else if((cmdtDvsnCode == "EBK" || cmdtDvsnCode == "AUD" || cmdtDvsnCode == "VID") && splitTempAll[i][8] == "0"){  //eBook, 오디오북, 동영상북인데 가격이 0인 상품
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <span class=\"prod_author\">"+splitTempAll[i][3]+"("+splitTempAll[i][4]+")"+"</span>";
+            addShopHtml += "                                            <div class=\"prod_purchase_state\">무료도서</div>";            
+        }else if(cmdtDvsnCode == "SAM"){    //SAM
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <span class=\"prod_author\">"+splitTempAll[i][3]+"("+splitTempAll[i][4]+")"+"</span>";
+            addShopHtml += "                                            <div class=\"prod_price\">";
+            addShopHtml += "                                                <div class=\"prod_condition\">";
+            /*addShopHtml += "                                                    <sapn class=\"condition\">sam이용권 구매시 열람가능</span>";
+            addShopHtml += "                                                    <sapn class=\"price\">월</span><span class=\"fw_bold\">3,300</span>원~</span>";*/            
+            addShopHtml += "                                                </div>";            
+            addShopHtml += "                                            </div>";            
+        }else if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //기프트, 음반, DVD
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <span class=\"prod_author\">"+splitTempAll[i][4]+"</span>";
+            addShopHtml += "                                            <div class=\"prod_price_cart\">";
+            addShopHtml += "                                                <div class=\"prod_price\">";
+            addShopHtml += "                                                    <span class=\"percent\">"+parseInt(splitTempAll[i][9])+"%"+"</span>";
+            addShopHtml += "                                                    <span class=\"price\">";
+            addShopHtml += "                                                        <span class=\"val\">"+(parseInt(splitTempAll[i][8])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"</span>";
+            addShopHtml += "                                                        <span class=\"unit\">원</span>";
+            addShopHtml += "                                                    </span>";
+            addShopHtml += "                                                </div>";
+            addShopHtml += "                                                <div class=\"right_box\">";
+            addShopHtml += cmdtDvsnCode == "GFT" ? "                                                    <button type=\"button\" class=\"btn_cart_circle\" onclick=\"searchClickEvent('cart', 'PC', '핫트랙스', '"+item.SALE_CMDTID+"', "+prodName+", '"+item.SALE_CMDT_DVSN_CODE_SUB+"', '"+splitTempAll[i][26]+"', '"+item.SALE_CMDT_GRP_DVSN_CODE+"', '"+item.CMDTCODE+"', '0', '"+splitTempAll[i][15]+"');\"><span class=\"ico_cart\"></span><span class=\"hidden\">장바구니 담기</span></button>" : "";
+            addShopHtml += "                                                </div>";
+            addShopHtml += "                                            </div>";            
+        }else{  //국내도서, 서양도서, 일본도서, eBook 등
+            var cmdtType = ejbNm == 'eBook' ? ejbNm : '종이책';
+            addShopHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_info\" onclick=\"ga360.EcommerceSet('select_item', [{item_id: '" + item.SALE_CMDTID + "', item_name: " + prodName + ", item_category: '" + item_category + "', item_list_name: '검색_자동완성'}], {currency: 'KRW'}, {ep_ecommerce_section: 'select_item>검색_자동완성', ep_item_id: '상품1_" + item.SALE_CMDTID + "', ep_item_name: '상품1_'+"+ prodName + ", ep_search_internalSearchWord: " + searchKeyword + "}, {});\">";
+            addShopHtml += "                                                <span class=\"prod_name\">["+ejbNm+"] "+item.CMDT_NAME+"</span>";
+            addShopHtml += "                                            </a>";
+            addShopHtml += "                                            <span class=\"prod_author\">"+splitTempAll[i][3]+"("+splitTempAll[i][4]+")"+"</span>";
+            addShopHtml += "                                            <div class=\"prod_price_cart\">";
+            addShopHtml += "                                                <div class=\"prod_price\">";
+            addShopHtml += "                                                    <span class=\"percent\">"+parseInt(splitTempAll[i][9])+"%"+"</span>";
+            addShopHtml += "                                                    <span class=\"price\">";
+            addShopHtml += "                                                        <span class=\"val\">"+(parseInt(splitTempAll[i][8])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"</span>";
+            addShopHtml += "                                                        <span class=\"unit\">원</span>";
+            addShopHtml += "                                                    </span>";
+            addShopHtml += "                                                </div>";
+            addShopHtml += "                                                <div class=\"right_box\">";
+            addShopHtml += "                                                    <button type=\"button\" class=\"btn_cart_circle\" onclick=\"searchClickEvent('cart', 'PC', '"+cmdtType+"', '"+item.SALE_CMDTID+"', "+prodName+", '"+item.SALE_CMDT_DVSN_CODE_SUB+"', '"+splitTempAll[i][26]+"', '"+item.SALE_CMDT_GRP_DVSN_CODE+"', '"+item.CMDTCODE+"', '0', '"+splitTempAll[i][15]+"');\"><span class=\"ico_cart\"></span><span class=\"hidden\">장바구니 담기</span></button>";
+            addShopHtml += "                                                </div>";
+            addShopHtml += "                                            </div>";            
+        }
+
+        addShopHtml += "                                        </div>";
+        addShopHtml += "                                    </div>";
+        addShopHtml += "                                </li>";
+        
+        if(i%3 == 2 || rst.data.realSize-1 == i){
+        addShopHtml += "                            </ul>";
+        addShopHtml += "                        </li>";                        
+        }                
+                            
+    });
+    
+    //상세화면 링크 세팅
+    cmdtDvsnCode = splitTempAll[0][13] ;
+    ejbNm = getTransEjbNm(cmdtDvsnCode);    
+    var item_category = cmdtDvsnCode === "EBK" ? 'eBook' : '종이책';
+    var addShopDetailHtml = "";
+    var shopProdName = avoidQuotes(splitTempAll[0][2]);
+    
+    if(cmdtDvsnCode == "DUM" && $("#gbCode").val() == "SAM"){
+        prodDetailDomain = getProdDetailDomain("SAM/"+cmdtDvsnCode)+item.CMDTCODE;            
+    }else if(cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "GFT" || cmdtDvsnCode == "BLURAY" || cmdtDvsnCode == "DUM"){
+        prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+$shop_obj[0].CMDTCODE;                
+    }else if(cmdtDvsnCode == "SAM"){
+        prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+$shop_obj[0].SALE_CMDTID+"?tabType=SAM";
+    }else{
+        prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+$shop_obj[0].SALE_CMDTID;
+    }
+    
+    //이미지 로팅 상품 아이디 세팅
+    if(splitTempAll[0][22] != "" && splitTempAll[0][23] == digImgCode){
+        imgloadCmdtCode = splitTempAll[0][22];
+    }else{
+        imgloadCmdtCode = $shop_obj[0].CMDTCODE;
+    }      
+        
+    removeEmTitle = splitTempAll[0][2];
+    if(removeEmTitle != null){
+        removeEmTitle = removeEmTitle.replace(/<span class="mark">/gi, "").replace(/<\/span>/gi, "");        
+        removeEmTitle = removeEmTitle.trim();            
+    }    
+
+    addShopDetailHtml += "                <div class=\"prod_area horizontal\">";
+    if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //핫트랙스
+        addShopDetailHtml += "                                        <div class=\"prod_thumb_box size_lg type_square_round\">";        
+    }else if(cmdtDvsnCode == "GFC"){    //기프트카드
+        addShopDetailHtml += "                                        <div class=\"prod_thumb_box size_lg type_gift_card\">";
+    }else if(cmdtDvsnCode == "EBK" || cmdtDvsnCode == "AUD" || cmdtDvsnCode == "VID" || cmdtDvsnCode == "DUM" || cmdtDvsnCode == "SAM"){    //이북
+        addShopDetailHtml += "                                        <div class=\"prod_thumb_box size_lg type_bookcover\" onclick=\"ga360.EcommerceSet('select_item', [{item_id: '" + $shop_obj[0].SALE_CMDTID + "', item_name: " + shopProdName + ", item_category: '" + item_category + "', item_list_name: '검색_자동완성'}], {currency: 'KRW'}, {ep_ecommerce_section: 'select_item>검색_자동완성', ep_item_id: '상품1_" + $shop_obj[0].SALE_CMDTID + "', ep_item_name: '상품1_'+" + shopProdName + ", ep_search_internalSearchWord: " + searchKeyword + "}, {});\">"
+    }else{
+        addShopDetailHtml += "                                        <div class=\"prod_thumb_box size_lg\" onclick=\"ga360.EcommerceSet('select_item', [{item_id: '" + $shop_obj[0].SALE_CMDTID + "', item_name: " + shopProdName + ", item_category: '" + item_category + "', item_list_name: '검색_자동완성'}], {currency: 'KRW'}, {ep_ecommerce_section: 'select_item>검색_자동완성', ep_item_id: '상품1_" + $shop_obj[0].SALE_CMDTID + "', ep_item_name: '상품1_'+" + shopProdName + ", ep_search_internalSearchWord: " + searchKeyword + "}, {});\">"
+    }    
+
+    //핫트랙스인 경우 이미지url값으로 이미지를 출력하고 다른 몰인 경우는 공통에서 이미지를 로드함
+    if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //핫트랙스
+        addShopDetailHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_link\">";
+        if(splitTempAll[0][15] == 1 || splitTempAll[0][15] == 19){
+            addShopDetailHtml += "                                                <span class=\"img_box adult\">"
+            addShopDetailHtml += "                                                </span>";                                
+        }else if(splitTempAll[0][14] == "" || splitTempAll[0][14] == "0"){
+            addShopDetailHtml += "                                                <span class=\"img_box no_img\">"
+            addShopDetailHtml += "                                                </span>";                
+        }else{
+            addShopDetailHtml += "                                                <span class=\"img_box\">"
+            addShopDetailHtml += "                                                    <img src=\""+splitTempAll[0][14]+"\" alt=\""+$shop_obj[0].SALE_CMDTID+"\" onerror=\"autoOnErrorImage(this);\">"         
+            addShopDetailHtml += "                                                </span>";                
+        }
+        addShopDetailHtml += "                                            </a>";        
+    }else{
+        addShopDetailHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_link\">";
+        addShopDetailHtml += "                                                <span class=\"img_box\">"
+        addShopDetailHtml += "                                                    <img class=\"prod_img_load auto_temp_img\" data-kbbfn=\"s3-image\" data-kbbfn-pid=\""+$shop_obj[0].SALE_CMDTID+"\" data-kbbfn-bid=\""+imgloadCmdtCode+"\" data-kbbfn-type=\""+$shop_obj[0].SALE_CMDT_DVSN_CODE+"\" data-kbbfn-attr=\"src\" data-kbbfn-size=\"200x0\" data-kbbfn-title=\""+removeEmTitle+"\" data-kbbfn-adult=\""+splitTempAll[0][15]+"\"/>";
+        if(splitTempAll[0][24] != "" && splitTempAll[0][25] == "1"){
+            addShopDetailHtml += "                                                <div class=\"prod_set\">"+splitTempAll[0][24]+"권 세트</div>";
+        }                
+        addShopDetailHtml += "                                                </span>";
+        addShopDetailHtml += "                                            </a>";
+    }
+
+    addShopDetailHtml += "                    </div>";
+    addShopDetailHtml += "                    <div class=\"prod_info_box\">";
+    addShopDetailHtml += "                        <a href=\""+prodDetailDomain+"\" class=\"prod_info\" onclick=\"ga360.EcommerceSet('select_item', [{item_id: '" + $shop_obj[0].SALE_CMDTID + "', item_name: " + shopProdName + ", item_category: '" + item_category + "', item_list_name: '검색_자동완성'}], {currency: 'KRW'}, {ep_ecommerce_section: 'select_item>검색_자동완성', ep_item_id: '상품1_" + $shop_obj[0].SALE_CMDTID + "', ep_item_name: '상품1_'+" + shopProdName + ", ep_search_internalSearchWord: " + searchKeyword + "}, {});\">"
+    addShopDetailHtml += "                            <span class=\"prod_name\">["+ejbNm+"] "+splitTempAll[0][2]+"</span>";
+    addShopDetailHtml += "                        </a>";
+    
+    if(cmdtDvsnCode != "PBC"){
+        if(cmdtDvsnCode == "CUL"){
+            addShopDetailHtml += "                        <span class=\"prod_author\">"+splitTempAll[0][3]+"</span>";
+        }else if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){
+            addShopDetailHtml += "                        <span class=\"prod_author\">"+splitTempAll[0][4]+"</span>";
+        }else{
+            addShopDetailHtml += "                        <span class=\"prod_author\">"+splitTempAll[0][3]+"·"+splitTempAll[0][4]+"</span>";
+        }
+    }
+    
+    if(cmdtDvsnCode == "EBK" && splitTempAll[0][12] == "1"){  //coupon_yn 이북연재여부
+        addShopDetailHtml += "                        <div class=\"prod_purchase_state\">대여/소장 가능</div>";
+    }else if(cmdtDvsnCode == "EBK" && splitTempAll[0][11] == "1"){  //free_send_yn 이북무료도서
+        addShopDetailHtml += "                        <div class=\"prod_purchase_state\">무료도서</div>";
+    }else if((cmdtDvsnCode == "EBK" || cmdtDvsnCode == "AUD" || cmdtDvsnCode == "VID") && splitTempAll[0][8] == "0"){  //eBook, 오디오북, 동영상북인데 가격이 0인 상품
+        addShopDetailHtml += "                        <div class=\"prod_purchase_state\">무료도서</div>";
+    }else if(cmdtDvsnCode == "SAM"){  //SAM
+        addShopDetailHtml += "                        <div class=\"prod_price\">";
+        addShopDetailHtml += "                            <div class=\"prod_condition\">";
+        addShopDetailHtml += "                            </div>";            
+        addShopDetailHtml += "                        </div>";
+    }else{
+        addShopDetailHtml += "                        <div class=\"prod_price\">";
+        addShopDetailHtml += "                            <span class=\"percent\">"+parseInt(splitTempAll[0][9])+"%"+"</span>";
+        addShopDetailHtml += "                            <span class=\"price\">";
+        addShopDetailHtml += "                                <span class=\"val\">"+(parseInt(splitTempAll[0][8])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"</span>";
+        addShopDetailHtml += "                                <span class=\"unit\">원</span>";
+        addShopDetailHtml += "                            </span>";
+        addShopDetailHtml += "                            <span class=\"price_normal\">";
+        addShopDetailHtml += "                                <span class=\"text\">정가</span>";
+        addShopDetailHtml += "                                <s class=\"val\">"+(parseInt(splitTempAll[0][7])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"원</s>";
+        addShopDetailHtml += "                            </span>";
+        addShopDetailHtml += "                        </div>";        
+    }
+    if(cmdtDvsnCode != "SAM"){
+        addShopDetailHtml += "                        <div class=\"prod_point_desc\">통합포인트 "+parseInt(splitTempAll[0][20])+"% 적립 <span class=\"fw_bold\">("+(parseInt(splitTempAll[0][10])+"").replace(/\B(?=(\d{3})+(?!\d))/g, ",")+"원)</span></div>";        
+    }    
+    addShopDetailHtml += "                    </div>";       
+    addShopDetailHtml += "                </div>";
+    
+    if(splitTempAll[0][21] != ""){
+        addShopDetailHtml += "                <div class=\"prod_summary_box\">";
+        addShopDetailHtml += "                    <div class=\"info_text font_size_xxs\">"+splitTempAll[0][21];
+        addShopDetailHtml += "                    </div>";
+        addShopDetailHtml += "                </div>";        
+    }
+    
+    $("#mouse_over_detail").html(addShopDetailHtml);
+    $("#shop_list").html(addShopHtml);
+    prodImageLoad(".auto_result_img");
+    prodImageLoad(".auto_temp_img");
+    setSearchRelatedProdSwiper();
+}
+
+//자동완성 - 이벤트 영역
+function getAutoKeywordEvent(rst) {
+
+    var $event_obj = rst.data.resultDocuments;
+    var keyword = $("#searchKeyword").val();
+    var searchKeyword = avoidQuotes($("#searchKeyword").val());
+    var addEventHtml = "";
+
+    $.each($event_obj, function(i){ 
+        addEventHtml += "                                 <li class=\"event_item swiper-slide\">";
+        addEventHtml += "                                     <div class=\"event_area\">";
+        addEventHtml += "                                         <a href=\""+autoEventInfoDomain + this.dq_ID+"\" class=\"event_link\" onclick=\"gaEventTryCatch('click_검색_PC', '자동완성', '', '클릭_이벤트', '"+this.event_NM+"', "+searchKeyword+")\">";
+        addEventHtml += "                                             <div class=\"event_thumb_box\">";
+
+        if(this.web_IMAGE_URL == ""){
+            addEventHtml += "                                                 <span class=\"img_box no_img\">";        
+            addEventHtml += "                                                 </span>";            
+        }else{
+            addEventHtml += "                                                 <span class=\"img_box\">";        
+            addEventHtml += "                                                     <img src=\""+this.web_IMAGE_URL+"\" alt=\""+this.event_NM+"\">";
+            addEventHtml += "                                                 </span>";            
+        }
+
+        addEventHtml += "                                             </div>";
+        addEventHtml += "                                             <div class=\"event_info_box\">";
+        addEventHtml += "                                                 <p class=\"event_name\">"+this.event_NM+"</p>";
+        addEventHtml += "                                             </div>";
+        addEventHtml += "                                         </a>";
+        addEventHtml += "                                     </div>";
+        addEventHtml += "                                 </li>";                  
+    });
+
+    $("#event_list").html(addEventHtml);
+    setSearchRelatedEventSwiper();
+}
+
+//자동완성 - 인물 영역
+function getAutoKeywordAuthor(rst) {
+    
+    var $author_obj = rst.data.resultDocuments;
+    var addAuthorHtml = "";
+    var ejbNm = "";
+    var keyword = $("#searchKeyword").val();
+    var searchKeyword = avoidQuotes($("#searchKeyword").val());
+    
+    
+    $.each($author_obj, function(i){ 
+        var splitAuthorTemp = $author_obj[i].rprs_INFO.split("@@");
+        //"데이터 정의 : 
+        //0|상품 아이디 //1|최근작 상품 구분 //2|최근 상품명
+        ejbNm = getTransEjbNm(splitAuthorTemp[1]);
+        // ga360 - ex) 나도향 - [국내도서] 물레방아
+        var itemFullNm = `${this.chrc_NAME} - [${ejbNm}] ${splitAuthorTemp[2]}`      
+
+        addAuthorHtml += "                        <li class=\"related_author_item\">";
+        addAuthorHtml += "                            <a href=\""+autoAuthorInfoDomain+$author_obj[i].dq_ID+"\" class=\"related_author_link\">";
+        addAuthorHtml += "                                <span class=\"text\" onclick=\"gaEventTryCatch('click_검색_PC', '자동완성', '', '클릭_인물', '"+itemFullNm+"', "+searchKeyword+")\">";
+        addAuthorHtml += "                                    <span class=\"author\">"+this.chrc_NAME+" - </span>";
+        addAuthorHtml += "                                    ["+ejbNm+"] "+splitAuthorTemp[2];
+        addAuthorHtml += "                                </span>";
+        addAuthorHtml += "                            </a>";
+        addAuthorHtml += "                        </li>";
+    });
+
+    $("#author_list").html(addAuthorHtml);
+}    
+
+//최근검색어
+function getRcntKeywordList(recentSch) {
+
+    $(".recent_keyword_box").empty();
+    var recentWrdList = recentSch.split("$|");
+    var addHtml = "";
+    
+    
+    addHtml  += "                              <div class=\"title_wrap title_size_def\">";
+    addHtml  += "                                  <p class=\"title_heading\">최근 검색어</p>";
+    addHtml  += "                                  <div class=\"right_area\">";
+    addHtml  += "                                      <button type=\"button\" class=\"btn_delete_text\" onclick=\"gaEventTryCatch('click_검색_PC', '검색전', '최근검색어', '전체삭제', '', '')\"><span class=\"ico_delete\"></span><a href=\"javascript:removeKeywordAll();\"><span class=\"text\">전체삭제</span></a></button>";
+    addHtml  += "                                  </div>";
+    addHtml  += "                              </div>";
+    addHtml  += "                              <div class=\"recent_keyword_list_wrap\">";
+    addHtml  += "                                  <ul class=\"recent_keyword_list\">";
+    
+    for(var i = 0 ; i < recentWrdList.length-1 ; i++){
+            recentWrd = recentWrdList[i].split("$^|");
+            var recentWrd0 = avoidQuotes(recentWrd[0]);
+            addHtml  += "                                      <li class=\"recent_keyword_item\">";
+            addHtml  += "                                          <div class=\"left_area\">";
+            addHtml  += "                                              <a href=\"javascript:goSearchKeywordPage(`"+encodeURIComponent(recentWrd[0])+"`)\" class=\"recent_keyword_link\" onclick=\"gaEventTryCatch('click_검색_PC', '검색전', '최근검색어', '클릭_최근검색어', "+ recentWrd0 +", '')\">";
+            addHtml  += "                                                  <span class=\"keyword\">" + escapetHtml(recentWrd[0]) + "</span>";
+            addHtml  += "                                              </a>";
+            addHtml  += "                                          </div>";
+            addHtml  += "                                          <div class=\"right_area\">";
+            addHtml  += "                                              <span class=\"date\">" + recentWrd[1] + "</span>";
+            addHtml  += "                                              <a href=\"javascript:removeKeyword('"+i+"');\">";
+            addHtml  += "                                                   <button type=\"button\" class=\"btn_keyword_del\"><span class=\"hidden\">이 검색어 삭제</span></button>";
+            addHtml  += "                                              </a> ";
+            addHtml  += "                                          </div>";
+            addHtml  += "                                      </li>";
+    }
+    
+    addHtml  += "                                    </ul>";
+    addHtml  += "                                    <div class=\"recent_keyword_bottom auto_complete_maintain\">";
+    addHtml  += "                                        <div class=\"btn_wrap\">";
+    addHtml  += "                                            <button type=\"button\" class=\"btn_save_keyword\" onclick=\"isRcntShow ? gaEventTryCatch('click_검색_PC', '검색전', '검색어저장', '검색어저장끄기', '', '') : gaEventTryCatch('click_검색_PC', '검색전', '검색어저장', '검색어저장켜기', '', '')\"><span class=\"text\">검색어저장 <span class=\"val\" onclick=\"javascript:keywordShowOff(); \">끄기</span></span></button>";
+    addHtml  += "                                        </div>";
+    addHtml  += "                                    </div>";
+    addHtml  += "                               </div>";
+    
+   $(".recent_keyword_box").append(addHtml);
+}
+   
+//최근검색어 없음
+function getRcntKeywordNoList() {
+
+    $(".recent_keyword_box").empty();
+    
+    addHtml  ="";
+    addHtml  += "                              <div class=\"title_wrap title_size_def\">";
+    addHtml  += "                                  <p class=\"title_heading\">최근 검색어</p>";
+    addHtml  += "                              </div>";
+    addHtml  += "                              <div class=\"recent_keyword_list_wrap\">";
+    addHtml  += "                                    <div class=\"no_data size_sm\">";
+    addHtml  += "                                         <div class=\"no_data_desc\">최근 검색어가 없습니다.</div>";
+    addHtml  += "                                    </div>";
+    addHtml  += "                                    <div class=\"recent_keyword_bottom auto_complete_maintain\">";
+    addHtml  += "                                        <div class=\"btn_wrap\">";
+    addHtml  += "                                            <button type=\"button\" class=\"btn_save_keyword\" onclick=\"isRcntShow ? gaEventTryCatch('click_검색_PC', '검색전', '검색어저장', '검색어저장끄기', '', '') : gaEventTryCatch('click_검색_PC', '검색전', '검색어저장', '검색어저장켜기', '', '')\"><span class=\"text\">검색어저장 <span class=\"val\" onclick=\"javascript:keywordShowOff();\">끄기</span></span></button>";
+    addHtml  += "                                        </div>";
+    addHtml  += "                                    </div>";
+    addHtml  += "                               </div>";
+    
+    $(".recent_keyword_box").append(addHtml);
+}
+
+//검색어저장 꺼짐
+function getRcntKeywordNoShow() {
+
+    $(".recent_keyword_box").empty();
+    
+    addHtml  ="";
+    addHtml  += "                              <div class=\"title_wrap title_size_def\">";
+    addHtml  += "                                  <p class=\"title_heading\">최근 검색어</p>";
+    addHtml  += "                              </div>";
+    addHtml  += "                              <div class=\"recent_keyword_list_wrap\">";
+    addHtml  += "                                    <div class=\"no_data size_sm\">";
+    addHtml  += "                                         <div class=\"no_data_desc\">검색어저장이 꺼져 있습니다.<br />검색어저장 켜기를 클릭해 주세요.</div>";
+    addHtml  += "                                    </div>";
+    addHtml  += "                                    <div class=\"recent_keyword_bottom auto_complete_maintain\">";
+    addHtml  += "                                        <div class=\"btn_wrap\">";
+    addHtml  += "                                            <button type=\"button\" class=\"btn_save_keyword\" onclick=\"gaEventTryCatch('click_검색_PC', '검색전', '검색어저장', '검색어저장켜기', '', '');\"><span class=\"text\">검색어저장 <span class=\"val\" onclick=\"javascript:keywordShowOn(); \">켜기</span></span></button>";
+    addHtml  += "                                        </div>";
+    addHtml  += "                                    </div>";
+    addHtml  += "                               </div>";
+    
+    $(".recent_keyword_box").append(addHtml);
+}
+
+//기본틀
+function showAutoKeyword() {
+    
+    $("#hFrame").empty();
+    $(".search_content_wrap").remove();
+    
+    addHtml  ="";
+    addHtml  += "                   <div class=\"search_content_wrap\">";
+    addHtml  += "                       <div class=\"scroll_wrap\">";
+    addHtml  += "                           <div class=\"recommend_keyword_area\">";
+    addHtml  += "                              <div class=\"title_wrap title_size_def\">";
+    addHtml  += "                                  <p class=\"title_heading\">추천 검색어</p>";
+    addHtml  += "                              </div>";
+    addHtml  += "                              <div class=\"tag_wrap\" id=\"recommendKeywordBox\">";
+    addHtml  += "                              </div>";
+    addHtml  += "                           </div>";
+    addHtml  += "                           <div class=\"keyword_contents_area\">";
+    addHtml  += "                              <div class=\"recent_keyword_box\">";
+    addHtml  += "                              </div>";
+    addHtml  += "                              <div class=\"keyword_prod_box\" id=\"keyWordProdBox\">";
+    addHtml  +="                                </div>";
+    addHtml  +="                                <div class=\"hot_keyword_box\" id=\"hotKeywordBox\">";
+    addHtml  +="                                </div>";
+    addHtml  +="                            </div>";
+    addHtml  +="                            <div class=\"util_area\">";
+    addHtml  +="                                <a href=\"javascript:goDetailSearch();\" class=\"btn_xs btn_light_gray\" onclick=\"gaEventTryCatch('click_검색_PC', '검색도움', '', '상세검색', '', '')\"><span class=\"ico_search\"></span><span class=\"text\">상세검색</span></a>";
+    addHtml  +="                                <a href=\"javascript:goCsCenter();\" class=\"btn_xs btn_line_gray\" onclick=\"gaEventTryCatch('click_검색_PC', '검색도움', '', '도움말', '', '')\"><span class=\"ico_link\"></span><span class=\"text\">도움말</span></a>";
+    addHtml  +="                            </div>";
+    addHtml  +="                        </div>";
+    addHtml  +="                    </div>";
+    addHtml += "                    <button type=\"button\" class=\"btn_layer_close\" id=\"close_search_auto\"><span class=\"ico_layer_close\"></span><span class=\"hidden\">닫기</span></button>";
+    
+    $("#hFrame").html(addHtml);
+}
+
+//자동검색어
+function rcntKeywordShow() {
+    //기본틀
+    //showAutoKeyword();
+    //최근 검색어
+    if(isRcntShow == false) {
+        getRcntKeywordNoShow();
+    } else {
+        var recentSch =  getAutoCompleteCookie("recentSch");
+        if(recentSch != null && recentSch != "") {
+            getRcntKeywordList(recentSch);
+        } else {
+            getRcntKeywordNoList();
+        }
+    }
+     //추천 검색어
+     trendsCall();
+     //실시간 급등 검색어
+     riseCall();
+     //많이본, 지금 많이본 상품
+     keyWordProd();
+}
+
+//최근검색어 끄기
+function keywordShowOff() {
+    isRcntShow = false;
+    var today = new Date();
+    var expire_date = new Date(today.getTime() + 365*60*60*24*1000);        
+    setAutoCompleteCookie ("rcntShow", "off", expire_date);
+    getRcntKeywordNoShow();
+}
+
+//최근검색어 켜기
+function keywordShowOn() {
+    isRcntShow = true;
+    var today = new Date();
+    var expire_date = new Date(today.getTime() - 60*60*24*1000);        
+    setAutoCompleteCookie ("rcntShow", "on", expire_date);
+    var recentSch =  getAutoCompleteCookie("recentSch");
+    if(recentSch != null && recentSch != "") {
+        getRcntKeywordList(recentSch);
+    } else {
+        getRcntKeywordNoList();
+    }
+}
+
+//최근검색어 전체 삭제
+function removeKeywordAll() {
+    delAutoCompleteCookie("recentSch");
+    getRcntKeywordNoList();
+}
+
+//최근검색어 개별 삭제
+function removeKeyword(idx) {
+    delSchList(idx);
+    rcntKeywordShow();
+}
+
+ //실시간인기검색어 연령변경
+function ageChange(age) {
+   riseCall(age,$("#genderSel").find(':selected').val());
+}
+
+//실시간인기검색어 성별변경
+function genderChange(gender) {
+   riseCall($("#ageSel").find(':selected').val(),gender);
+}
+
+//최근검색어 삭제
+function delSchList(idx) {
+    var recentSch =  getAutoCompleteCookie("recentSch");
+    if( recentSch != null && recentSch != ""){
+        var recentSchArray = recentSch.split("$|");
+        var str = "";
+        for( var i=0; i<recentSchArray.length - 1; i++ ){
+            if( i != idx ){
+                str += recentSchArray[i] + "$|";
+            }
+        }
+        var today = new Date();
+        var expire_date = new Date(today.getTime() + 365*60*60*24*1000);            
+        setAutoCompleteCookie("recentSch", str, expire_date);
+    }   
+}
+
+//최근검색어 추가
+function addRcentSchList(sKeyword) {
+    
+    if(isRcntShow) {
+        var maxLength = 10; //최대 저장갯수
+        var delimiter = "$|"; //String 구분자
+        var delimiter2 = "$^|"; //String 구분자            
+        var date = new Date();  
+        var mm = (date.getMonth() + 1);
+        var dd = date.getDate();
+        
+        if (("" + mm).length == 1) { mm = "0" + mm; }
+        if (("" + dd).length   == 1) { dd   = "0" + dd;   }
+        
+        var dateForm = mm +"."+ dd;
+
+        var recentSch = getAutoCompleteCookie("recentSch");
+        var recentWord = "";
+        sKeyword    = suggest_cutString(sKeyword,52);       
+        recentWord = sKeyword + delimiter2 + dateForm;
+        if(recentSch == null){
+            recentSch = delimiter;              
+        }else{
+            recentSch =  delimiter + recentSch;
+        }
+
+        //과거날짜 중복 체크
+        if(recentSch.indexOf(recentWord+delimiter) <= 0 && recentSch.indexOf(sKeyword + delimiter2) > 0){   //현재날짜 중복체크
+            tot = parseInt(recentSch.indexOf(sKeyword + delimiter2))+ parseInt(delimiter2.length) + parseInt(sKeyword.length) + parseInt(dateForm.length)+parseInt(delimiter.length);
+            dup_data = recentSch.substring(recentSch.indexOf(sKeyword + delimiter2), tot);
+            //console.log("dup_data:" + dup_data);          
+            recentSch = recentSch.replace(dup_data,"");
+        }
+        
+        if(recentSch.indexOf(recentWord+delimiter) > 0){    //현재날짜 중복체크
+            recentSch = recentSch.replace(delimiter+recentWord+delimiter,delimiter);          
+        }   
+        recentSch = recentWord + recentSch; 
+
+        var recentSchCount = recentSch.split(delimiter).length;
+        
+        //최대 저장갯수를 초과하면 처음들어온거 삭제. 
+        if(recentSchCount>maxLength+1){
+           recentSch = recentSch.substring(0,recentSch.lastIndexOf(delimiter));
+           recentSch = recentSch.substring(0,recentSch.lastIndexOf(delimiter)+delimiter.length);
+        }
+        var today = new Date();
+        var expire_date = new Date(today.getTime() + 365*60*60*24*1000);            
+        setAutoCompleteCookie("recentSch" ,recentSch, expire_date);         
+    }
+}
+
+//limitByte 의 byte 만큼 str 을 자른 후 반환한다.                                                                  
+function suggest_cutString( str , limitByte){
+    var inc = 0;
+    var nbytes = 0;
+    var msg = "";
+    var msglen = str.length;
+
+    for (i=0; i<msglen; i++) {
+      
+        var ch = str.charAt(i);
+        if (escape(ch).length > 4) {
+            inc = 2;
+        } else if (ch == '') {
+            if (str.charAt(i-1) != '') {
+                inc = 1;
+            }
+        } else if (ch == '<' || ch == '>') {
+            inc = 4;
+        } else {
+            inc = 1;
+        }
+        if ((nbytes + inc) > limitByte ) {
+            break;
+        }
+        nbytes += inc;
+        msg += ch;
+        
+    }
+    
+    if( i != msglen ) msg = msg + "..";
+    
+    return msg;
+}
+
+// 쿼리스트링 공백 인코딩 설정
+ function replaceKeyword(inum) {
+    inum = inum.replace(/\+/g, "%20");  //"+"로 되어 있는 공백 표현을 "%20"로 변환
+    return inum; 
+}
+
+// 검색 시작 및 페이지 이동
+function goSearchKeywordPage(keyvalue){
+    var inkeyword = keyvalue.trim();
+    if(inkeyword == ""){
+        KbbJS.ui.alert("검색어를 입력해 주세요.");
+        enterKeySubmitFlag = false;
+        return false;
+    }
+
+    var paramStr = ""; 
+    var targetNm = "";
+    var gbCodeVal = $("#gbCode option:selected").val();
+    
+    if(gbCodeVal=="KBO"){
+        targetNm = "kyobo";
+    }else if(gbCodeVal=="EBK"){
+        targetNm = "ebook";
+    }else if(gbCodeVal=="SAM"){
+        targetNm = "sam";
+    }else if(gbCodeVal=="HTS"){
+        targetNm = "hottracks";
+    }else{
+        targetNm = "total";
+    }
+
+    paramStr += "keyword="+encodeURIComponent(inkeyword)+"&gbCode="+gbCodeVal+"&target="+targetNm;
+    location.href = autoSearchDomain + "search?"+paramStr; 
+}
+
+// 결과 내 재검색 시작 및 페이지 이동
+function goSearchRekeywordPage(keyvalue){
+
+    var inkeyword = keyvalue.trim();
+    rekeyword = ($("#rekeyword").val()).trim();
+    var suggestKeyword = $("#suggestKeywordHidden").val();
+    
+    if(inkeyword == ""){
+        KbbJS.ui.alert("검색어를 입력해 주세요.");
+        enterKeySubmitFlag = false;
+        return false;
+    }
+
+    var curr_url = location.search.substr(location.search.indexOf("?") + 1);
+    var paramStr = "";
+    
+    curr_url = curr_url.split("&");
+    
+    for (var i = 0; i < curr_url.length; i++) {
+        temp = curr_url[i].split("=");
+        if(suggestKeyword!=""){
+            if([temp[0]] != "rekeyword" && [temp[0]] != "page" && [temp[0]] != "keyword"){
+                if(paramStr != ""){
+                    paramStr += "&";
+                }
+                paramStr += curr_url[i];
+            }
+        }else{
+            if([temp[0]] != "rekeyword" && [temp[0]] != "page"){
+                if(paramStr != ""){
+                    paramStr += "&";
+                }
+                paramStr += curr_url[i];
+            }
+        }
+    }
+    paramStr += "&rekeyword="+encodeURIComponent(rekeyword);
+    if(suggestKeyword!="") paramStr += "&keyword="+decodeURIComponent(suggestKeyword);
+    
+    if($("#searchType").val() == "DETAIL_SEARCH") {
+        location.href = autoSearchDomain + "searchDetailResult?"+paramStr;
+    }else{
+        location.href = autoSearchDomain + "search?"+paramStr;        
+    }    
+}    
+
+// 탭 페이지 이동
+function goTabTarget(target){
+    var keywordVal = $("#searchKeyword").val();
+    keywordVal = keywordVal.trim();
+    if(keywordVal == "") {
+        KbbJS.ui.alert("검색어를 입력해 주세요.");
+        return false;
+    }
+
+    var paramStr = ""; 
+    var gbCodeNm = "";
+    
+    if(target=="ebook"){
+        gbCodeNm = "EBK";
+    }else if(target=="sam"){
+        gbCodeNm = "SAM";
+    }else if(target=="hottracks"){
+        gbCodeNm = "HTS";
+    }else if(target=="kyobo"){
+        gbCodeNm = "KBO";
+    }else if(target=="review" || target=="content"||target=="casting"){
+        var upperHidden = $("#upperTargetHidden").val();
+        
+        if(upperHidden=="") upperHidden = $("#targetHidden").val();
+        
+        if(upperHidden=="ebook"){
+            gbCodeNm = "EBK";
+        }else if(upperHidden=="sam"){
+            gbCodeNm = "SAM";
+        }else if(upperHidden=="hottracks"){
+            gbCodeNm = "HTS";
+        }else if(target=="kyobo"){
+            gbCodeNm = "KBO";
+        }else{
+            gbCodeNm = "TOT";
+        }
+    }else{
+        gbCodeNm = "TOT";
+    }
+
+    paramStr += "keyword="+encodeURIComponent(keywordVal)+"&gbCode="+gbCodeNm+"&target="+target;
+
+    if(target=="review" || target=="content" || target=="casting"){
+        var upperTargetNm = getAutoSearchParam('upperTarget');
+        paramStr += "&upperTarget="+upperTargetNm
+    }
+    
+    location.href = autoSearchDomain + "search?"+paramStr;  
+}
+
+function submitSearchKeywordPage() {
+    var keyword = $("#searchKeyword").val();
+    goSearchKeywordPage(keyword);
+}
+
+// 원래 검색어로 검색(제안검색어로 검색 후)
+function goSearchOriginKeywordPage(keyvalue){
+    var inkeyword = keyvalue.trim();
+    if(inkeyword == ""){
+        KbbJS.ui.alert("검색어를 입력해 주세요.");
+        enterKeySubmitFlag = false;
+        return false;
+    }
+
+    var paramStr = ""; 
+    var targetNm = "";
+    var gbCodeVal = $("#gbCode option:selected").val();
+    
+    if(gbCodeVal=="KBO"){
+        targetNm = "kyobo";
+    }else if(gbCodeVal=="EBK"){
+        targetNm = "ebook";
+    }else if(gbCodeVal=="SAM"){
+        targetNm = "sam";
+    }else if(gbCodeVal=="HTS"){
+        targetNm = "hottracks";
+    }else{
+        targetNm = "total";
+    }
+
+    paramStr += "keyword="+encodeURIComponent(inkeyword)+"&gbCode="+gbCodeVal+"&target="+targetNm+"&isOriginKeywordSearch=true";
+    location.href = autoSearchDomain + "search?"+paramStr; 
+}
+
+//추천 검색어
+async function trendsCall() {
+    await KbbJS.auth.authorize();
+    
+    var age = 0;
+    var gender = "0";
+
+    if (KbbJS.auth.authorized) {
+        
+        age = KbbJS.user.model.age
+        
+        if(age >= 10 && age < 20) {
+            age = "10";
+        }else if(age >= 20 && age < 30) {
+            age = "20";
+        }else if(age >= 30 && age < 40) {
+            age = "30";
+        }else {
+            age = "40";
+        }
+               
+        gender = KbbJS.user.model.data.gndrCodeName;
+        
+        if(gender == "남"){
+            gender = "1"; 
+        }else if(gender == "여"){
+            gender = "2";
+        }
+    }    
+
+    $.ajax({
+        type: "GET",        
+        dataType : "jsonp",
+        jsonpCallback: "searchAutoTrends",
+        url : autoCompleteDomain + "srp/api/v1/search/autocomplete/trends",          
+        data: {
+              "sex": gender,
+              "age" : age,
+              "gubun" : "P"
+        },
+        success: function(rst) {
+            var $temp = rst.data.resultDocuments;
+            var addHtml ="";
+            if($temp !="" && $temp !=null){// 조회된 건수가 있다면  true
+                $.each($temp, function(index){ 
+                    var item = $temp[index];
+                    var keywords = checkKeyword(item.keywords);
+                    var enKeywords = encodeURIComponent(keywords);
+                       addHtml  += "        <a href=\"javascript:goSearchKeywordPage(decodeURIComponent('"+enKeywords+"'), 'LAG')\" class=\"tag\" onclick=\"gaEventTryCatch('click_검색_PC', '검색전', '추천검색어', '클릭_추천검색어', decodeURIComponent('"+enKeywords+"'), '')\"><span class=\"text\">"+keywords+"</span></a>";
+                });
+           }else if(age =="" || age=="0"|| age==0 || age== null){// 조회된 건수가 없다면  true
+               "<div class=\"text_none\">검색어가 없습니다.</div>";
+           }else {// 조회된 건수가 없다면  true
+               addHtml += "<div class=\"text_none\">검색어가 없습니다.</div>";
+           }
+            $("#recommendKeywordBox").html(addHtml);
+        }
+    });
+}
+
+//실시간 급등 검색어
+function riseCall(age,gender) {
+    $.ajax({
+        type: "GET",        
+        dataType : "jsonp",
+        jsonpCallback: "searchAutoRise",
+        url : autoCompleteDomain + "srp/api/v1/search/autocomplete/rise",           
+        data: {
+              "sex": gender,
+              "age" : age,
+              "gubun" : "P"
+        },
+        success: function(rst) {
+            var addHtml = "";
+            addHtml  +="                <div class=\"title_wrap title_size_def\">";
+            addHtml  +="                    <p class=\"title_heading\">실시간 인기 검색어</p>";
+            addHtml  +="                    <div class=\"right_area\">";
+            addHtml  +="                        <div class=\"item_group\">";
+            addHtml  +="                            <!-- form_sel -->";
+            addHtml  +="                            <div class=\"form_sel type_arw\" data-class=\"type_arw\">";
+            addHtml  +="                                <select title=\"연령기준 정렬\" id=\"ageSel\">";
+            addHtml  +="                                    <option value=\"\">전연령</option>";
+            for(var i = 10; i<=40; i+=10){
+                var selected = "";
+                var upperChr = "";
+                if (i==age) selected = "selected";
+                if (i==40) upperChr ="↑"
+                addHtml  +="                                <option value=\""+i+"\" "+selected+">"+i+"대"+upperChr+"</option>";
+            }
+            addHtml  +="                                </select>";
+            addHtml  +="                            </div>";
+            addHtml  +="                            <!-- //form_sel -->"
+            addHtml  +="                            <div class=\"form_sel type_arw\" data-class=\"type_arw\">";
+            addHtml  +="                                <select title=\"성별기준 정렬\" id=\"genderSel\">";
+            addHtml  +="                                    <option value=\"\">전성별</option>";
+            if(gender==1){
+                addHtml  +="                                 <option value=\"1\" selected>남성</option>";
+                addHtml  +="                                 <option value=\"2\">여성</option>";
+            }else if(gender==2){
+                addHtml  +="                                 <option value=\"1\">남성</option>";
+                addHtml  +="                                 <option value=\"2\" selected>여성</option>";
+            }else{
+                addHtml  +="                                 <option value=\"1\">남성</option>";
+                addHtml  +="                                 <option value=\"2\">여성</option>";
+            }
+            addHtml  +="                                </select>";
+            addHtml  +="                            </div>";
+            addHtml  +="                            <!-- //form_sel -->";
+            addHtml  +="                        </div>";
+            addHtml  +="                    </div>";
+            addHtml  +="                </div>";
+            addHtml  +="                <div class=\"hot_keyword_list_wrap\">";
+            addHtml  +="                    <ul class=\"hot_keyword_list\">";
+            if(rst.data.realSize > 0 && rst.resultCode == 200) {
+                var $obj = rst.data.resultDocuments;
+                var zeroNum = "0";
+                $.each($obj, function(i){ 
+                    if(i==9)zeroNum = "";
+                    var item = $obj[i];
+                    var keywords = checkKeyword(item.keywords);
+                    var enKeywords = encodeURIComponent(keywords);
+
+                    if(i<3){
+                        addHtml +="             <li class=\"hot_keyword_item top\">";
+                    }else{
+                        addHtml +="             <li class=\"hot_keyword_item\">";
+                    }                                
+                    addHtml +="                     <div class=\"left_area\">";
+                    addHtml +="                         <a href=\"javascript:goSearchKeywordPage(decodeURIComponent('"+enKeywords+"'), 'LAG')\" onclick=\"gaEventTryCatch('교보문고_검색_PC','실시간검색어','"+(i+1)+"'); gaEventTryCatch('click_검색_PC', '검색전', '실시간인기검색어', '클릭_실시간인기검색어', decodeURIComponent('"+enKeywords+"'), '')\" class=\"hot_keyword_link\">";
+                    addHtml +="                             <span class=\"rank\">"+zeroNum+(i+1)+"</span>";
+                    addHtml +="                             <span class=\"keyword\">"+keywords+"</span>";
+                    addHtml +="                         </a>";
+                    addHtml +="                     </div>";
+                    addHtml +="                     <div class=\"right_area\">";
+                    if(item.diff == 0){ // 현상유지
+                        addHtml +="                     <div class=\"rank_status\"><span class=\"hidden\">변동 없음</span></div>";
+                    }else if (item.diff > 0 && item.diff !=9999){//상승
+                        addHtml +="                     <div class=\"rank_status up\"><span class=\"hidden\">순위 상승</span>"+item.diff+"</div>";
+                    }else if (item.diff < 0 ){//하락
+                        addHtml +="                     <div class=\"rank_status down\"><span class=\"hidden\">순위 하락</span>"+Math.abs(item.diff)+"</div>";
+                    }else if (item.diff > 0 && item.diff == 9999 ){ // 신규
+                        addHtml +="                     <div class=\"rank_status new\"><span class=\"hidden\">신규 순위</span>NEW</div>";
+                    }
+                    addHtml +="                     </div>";
+                    addHtml +="                 </li>";
+                });
+                addHtml +="                 </ul>";
+                addHtml +="                 <div class=\"hot_keyword_bottom\">";
+                      
+                dateStr = getRiseCallYmdStr(rst.data.resultDocuments[0].reg_DATE);  
+                addHtml +="                     <p class=\"info_text font_size_xxs\">"+dateStr+" 기준</p>";
+            }
+            
+            addHtml +="                     </div>";
+            addHtml +="                 </div>";
+            $("#hotKeywordBox").html(addHtml);
+            $("#ageSel, #genderSel").selectmenu({ 
+                    change:function(){
+                        var exec = this.id == 'ageSel' ? ageChange(this.value) : genderChange(this.value);
+                    }
+                });
+            $("#ageSel-menu, #genderSel-menu").parent().addClass("type_arw auto_complete_maintain");
+        }
+    });
+}
+
+// 많이 본 상품/지금 많이 찾는 상품
+function keyWordProd() {
+    var recent_keyword = "";
+    var recentSch =  getAutoCompleteCookie("recentSch");
+    
+    if(recentSch != null && recentSch != "") {
+        recent_keyword = recentSch.split("$|")[0].split("$^|")[0];
+    }
+
+    $.ajax({
+        type: "GET",        
+        dataType : "jsonp",
+        jsonpCallback: "searchAutoLogRecommend",
+        url : autoCompleteDomain + "srp/api/v1/search/autocomplete/log-recommend",        
+        data: {"keyword": recent_keyword, "len" : 8},
+        success: function(rst) {
+            if(rst.data.realSize > 0 && rst.resultCode == 200){
+                keyWordProdDraw(rst);    
+                if(recent_keyword != ""){
+                    $("#keyWordProdTitle").text("함께 많이 본 상품");
+                }else{
+                    $("#keyWordProdTitle").text("지금 많이 찾는 상품");
+                }        
+            }else{
+                $.ajax({
+                    type: "GET",        
+                    dataType : "jsonp",
+                    jsonpCallback: "searchAutoLogRecommend",
+                    url : autoCompleteDomain + "srp/api/v1/search/autocomplete/log-recommend",                        
+                    data: { "len" : 8},
+                    success: function(rst) {
+                        if(rst.data.realSize > 0 && rst.resultCode == 200){
+                            keyWordProdDraw(rst);
+                            $("#keyWordProdTitle").text("지금 많이 찾는 상품");
+                        }
+                    }
+                });                        
+            }
+        }
+    });
+}
+
+// 많이 본 상품/지금 많이 찾는 상품 리스트 출력
+function keyWordProdDraw(rst) {
+    var ejbNm = "";
+    var prodDetailDomain = "";
+    var saleCmdtId = "";
+    var imgloadCmdtCode = "";         
+
+    addHtml   ="        <div class=\"title_wrap title_size_def\">";
+    addHtml  +="            <p class=\"title_heading\" id=\"keyWordProdTitle\">지금 많이 찾는 상품</p>";
+    addHtml  +="            <div class=\"right_area control_keyword_prod\">";
+    addHtml  +="                <div class=\"swiper_control_box\">";
+    addHtml  +="                    <button type=\"button\" class=\"swiper-button-prev\"><span class=\"hidden\">이전</span></button>";
+    addHtml  +="                    <div class=\"swiper-pagination\"></div>";
+    addHtml  +="                    <button type=\"button\" class=\"swiper-button-next\"><span class=\"hidden\">다음</span></button>";
+    addHtml  +="                </div>";
+    addHtml  +="            </div>";
+    addHtml  +="        </div>";
+    addHtml  +="        <div class=\"keyword_prod_swiper_wrap\">";
+    addHtml  +="            <div class=\"keyword_prod_swiper swiper-container\">";
+    addHtml  +="                <ul class=\"swiper-wrapper\">";
+    if(rst.data.realSize > 0 && rst.resultCode == 200){
+        var $obj = rst.data.resultDocuments;
+        $.each($obj, function(i){ 
+            var item = $obj[i];
+
+            //상세화면 링크 세팅
+            cmdtDvsnCode = item.sale_CMDT_DVSN_CODE;
+            ejbNm = getTransEjbNm(cmdtDvsnCode);
+            saleCmdtId = item.dq_ID.split("@")[0];
+            if(cmdtDvsnCode == "DUM" && $("#gbCode").val() == "SAM"){
+                prodDetailDomain = getProdDetailDomain("SAM/"+cmdtDvsnCode)+item.cmdtcode;            
+            }else if(cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "GFT" || cmdtDvsnCode == "BLURAY" || cmdtDvsnCode == "DUM"){
+                prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+item.cmdtcode;                
+            }else if(cmdtDvsnCode == "SAM"){
+                prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+saleCmdtId+"?tabType=SAM";
+            }else{
+                prodDetailDomain = getProdDetailDomain(cmdtDvsnCode)+saleCmdtId;
+            }
+            
+            //이미지 로팅 상품 아이디 세팅
+            if(item.w_BARCODE != "" && item.cver_IMG_YSNO == "1"){
+                imgloadCmdtCode = item.w_BARCODE;
+            }else{
+                imgloadCmdtCode = item.cmdtcode;
+            }              
+            
+            if(i == 0 || i%4 == 0){
+                addHtml += "                    <li class=\"swiper-slide\">";
+                addHtml += "                        <ul class=\"prod_row_list\">";                    
+            }
+            
+            addHtml +="                            <li class=\"prod_item\">";
+            addHtml +="                                <div class=\"prod_area horizontal\">";
+
+            if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //핫트랙스
+                addHtml += "                                        <div class=\"prod_thumb_box size_min type_square_round\">";        
+            }else if(cmdtDvsnCode == "GFC"){    //기프트카드
+                addHtml += "                                        <div class=\"prod_thumb_box size_min type_gift_card\">";
+            }else if(cmdtDvsnCode == "EBK" || cmdtDvsnCode == "AUD" || cmdtDvsnCode == "VID" || cmdtDvsnCode == "DUM" || cmdtDvsnCode == "SAM"){    //이북
+                addHtml += "                                        <div class=\"prod_thumb_box size_min type_bookcover\">";
+            }else{
+                addHtml += "                                        <div class=\"prod_thumb_box size_min\">";
+            } 
+
+            //핫트랙스인 경우 이미지url값으로 이미지를 출력하고 다른 몰인 경우는 공통에서 이미지를 로드함
+            if(cmdtDvsnCode == "GFT" || cmdtDvsnCode == "MUC" || cmdtDvsnCode == "DVD" || cmdtDvsnCode == "BLURAY"){    //핫트랙스
+                addHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_link\">";
+                if(item.prhb_AGE == 1 || item.prhb_AGE == 19){
+                    addHtml += "                                                <span class=\"img_box adult\">"
+                    addHtml += "                                                </span>";                                
+                }else if(item.image_URL == ""){
+                    addHtml += "                                                <span class=\"img_box no_img\">"
+                    addHtml += "                                                </span>";                
+                }else{
+                    addHtml += "                                                <span class=\"img_box\">"
+                    addHtml += "                                                    <img src=\""+item.image_URL+"\" alt=\""+item.product_NM+"\" onerror=\"autoOnErrorImage(this);\">"        
+                    addHtml += "                                                </span>";                
+                }
+                addHtml += "                                            </a>";        
+            }else{
+                addHtml += "                                            <a href=\""+prodDetailDomain+"\" class=\"prod_link\">";
+                addHtml += "                                                <span class=\"img_box\">"
+                addHtml += "                                                    <img class=\"prod_img_load auto_result_img\" data-kbbfn=\"s3-image\" data-kbbfn-pid=\""+saleCmdtId+"\" data-kbbfn-bid=\""+imgloadCmdtCode+"\" data-kbbfn-type=\""+item.sale_CMDT_DVSN_CODE+"\" data-kbbfn-attr=\"src\" data-kbbfn-size=\"100x0\" data-kbbfn-adult=\""+item.prhb_AGE+"\" data-kbbfn-title=\""+item.product_NM+"\"/>";
+                addHtml += "                                                </span>";
+                addHtml += "                                            </a>";
+            }        
+ 
+            addHtml +="                                    </div>";
+            addHtml +="                                    <div class=\"prod_info_box size_xs\">";
+            addHtml +="                                        <a href=\""+prodDetailDomain+"\" class=\"prod_info\">";
+            addHtml += "                                           <span class=\"prod_name\">["+ejbNm+"] "+item.product_NM+"</span>";            
+            addHtml +="                                        </a>";
+            addHtml +="                                    </div>";
+            addHtml +="                                    <span class=\"prod_author\"></span>";
+            addHtml +="                                </div>";
+            addHtml +="                            </li>";
+            
+            if(i%4 == 3 || rst.data.realSize-1 == i){
+                addHtml += "                        </ul>";
+                addHtml += "                    </li>";                        
+            }
+                                
+        });
+    }else{
+        $("#searchTrendDiv").hide();
+    }
+    
+    addHtml +="                </ul>";
+    addHtml +="            </div>";
+    addHtml +="        </div>";
+    $("#keyWordProdBox").html(addHtml);
+    prodImageLoad(".auto_result_img");
+    setSearchKeywordProdSwiper();   
+}    
+
+//EjbNm 한글명 변환
+function getTransEjbNm(category){
+    var trans_ejbNm ="";
+    if(category =="EBK"){
+        trans_ejbNm = "eBook";
+    } else if(category =="SAM"){
+        trans_ejbNm = "sam";
+    } else if(category =="MUC"){
+        trans_ejbNm = "음반";
+    } else if(category =="DVD"){
+        trans_ejbNm = "DVD";
+    } else if(category =="GFT"){
+        trans_ejbNm = "기프트";
+    } else if(category =="ENG" || category =="BNT"){
+        trans_ejbNm = "서양도서";
+    } else if(category =="JAP" || category =="JNT"){
+        trans_ejbNm = "일본도서";
+    } else if(category =="AUD"){
+        trans_ejbNm = "오디오북";
+    } else if(category =="VID"){
+        trans_ejbNm = "동영상";
+    } else if(category =="DUM"){
+        trans_ejbNm = "학술논문";
+    } else if(category =="POD"){
+        trans_ejbNm = "POD";
+    } else if(category =="CUL"){
+        trans_ejbNm = "컬처";
+    } else if(category =="PBC"){
+        trans_ejbNm = "교보굿즈";
+    } else if(category =="GFC"){
+        trans_ejbNm = "기프트카드";
+    } else if(category =="CMB"){
+        trans_ejbNm = "패키지";
+    } else if(category =="KOR"){
+        trans_ejbNm = "국내도서";
+    } else if(category =="EBP"){
+        trans_ejbNm = "ebook+";
+    } else if(category =="BLURAY"){
+        trans_ejbNm = "BLU-RAY";
+    }
+    return trans_ejbNm;
+}
+
+// 실시간 검색어 기준 날짜 형식 변환
+function getRiseCallYmdStr(date){
+    var dateTemp = date.split(".");
+    return dateTemp[1].trim()+"."+dateTemp[2].trim()+" "+dateTemp[3].trim();
+}
+
+// 상세검색 페이지 이동
+function goDetailSearch(){
+    var gbCodeVal = $("#gbCode option:selected").val();
+    var targetNm = "";
+    if(gbCodeVal=="EBK"){
+        targetNm = "ebook";
+    }else if(gbCodeVal=="SAM"){
+        targetNm = "sam";
+    }else if(gbCodeVal=="HTS"){
+        targetNm = "hottracks";
+    }else if(gbCodeVal=="KBO" || gbCodeVal=="TOT"){
+        targetNm = "kyobo";
+    }
+
+    location.href = autoSearchDomain + "searchDetail?gbCode="+gbCodeVal+"&target="+targetNm;
+}
+
+// 도움말 페이지 이동
+function goCsCenter(){
+    location.href = autoCsCenterDomain;
+}
+
+// 검색어 체크 
+function checkKeyword(text){
+    var checkValue = text+"";
+    checkValue = checkValue.replace(/&/gi, "&amp;");
+    checkValue = checkValue.replace(/\\/gi, "&#92;");
+    checkValue = checkValue.replace(/</gi, "&lt;");
+    checkValue = checkValue.replace(/>/gi, "&gt;");
+    checkValue = checkValue.replace(/'/gi, "&#39;");
+    checkValue = checkValue.replace(/\[/gi, "&#91;");
+    checkValue = checkValue.replace(/\]/gi, "&#93;");
+    checkValue = checkValue.replace(/"/gi, "&#34;");
+    return checkValue;
+}
+
+// 검색어 체크
+function checkKeywordBlank(text){
+    var checkValue = text+"";
+    checkValue = checkValue.replace("&amp;", "&");
+    checkValue = checkValue.replace("&#92;", "\\");
+    checkValue = checkValue.replace("&lt;", "<");
+    checkValue = checkValue.replace("&gt;", ">");
+    checkValue = checkValue.replace("&#39;", "'");
+    checkValue = checkValue.replace("&#91;", "[");
+    checkValue = checkValue.replace("&#93;", "]");
+    checkValue = checkValue.replace("&#34;", "\"");
+    return checkValue;
+}
+
+//상품군에 따른 상품 상세 링크 정보
+function getProdDetailDomain(category){
+    var detailDomain ="";
+    if(category =="EBK" || category =="AUD" || category =="VID"){
+        detailDomain = autoEbookProdDetailDomain;
+    } else if(category =="SAM/DUM"){
+        detailDomain = autoSamDumProdDetailDomain;
+    } else if(category =="DUM"){
+        detailDomain = autoEbookDumProdDetailDomain;
+    } else if(category =="SAM"){
+        detailDomain = autoSamProdDetailDomain;
+    } else if(category =="MUC" || category =="DVD" || category =="BLURAY"){
+        detailDomain = autoHottracksProdDetailDomain+"record/detail/";
+    } else if(category =="GFT"){
+        detailDomain = autoHottracksProdDetailDomain+"gift/detail/";
+    } else if(category =="KOR" || category =="ENG" || category =="JAP" || category =="BNT" || category =="JNT" || category =="POD" || category =="CUL" || category =="PBC" || category =="GFC" || category =="CMB" || category =="EBP"){
+        detailDomain = autoKyoboProdDetailDomain;
+    } else {
+        detailDomain = autoKyoboProdDetailDomain;
+    }
+    return detailDomain;
+}
+
+// 자동완성 콜백함수
+function autocompleteShop(){};
+function searchAutoShortcut(){}
+function searchAutoEvent(){}
+function searchAutoAuthor(){}
+function searchAutoTrends(){}
+function searchAutoRise(){}
+function searchAutoLogRecommend(){}
+
+// 검색결과 비동기 호출 후 상품 이미지 로드
+function prodImageLoad(target){
+    $('.prod_img_load'+target).each(function() {
+        var $imgWrap = getProdImageUrl($(this).data("kbbfn-pid"), $(this).data("kbbfn-bid"), $(this).data("kbbfn-type"), $(this).data("kbbfn-adult"), $(this).data("kbbfn-size"), $(this).data("kbbfn-title"));
+        $(this).replaceWith($imgWrap.find("img"));
+    });
+}
+
+// 상품 이미지 영역 받아오기
+function getProdImageUrl(pid, bid, type, adult, size, title){
+    var imgDataOption = { "pid": pid,
+                          "bid": bid,
+                          "type": type,                      
+                          "adult": adult,
+                          "size": size,
+                          "title": title                    
+                        }
+    if (imgDataOption['size'] == undefined) delete imgDataOption['size'];
+    return KbbJS.ui.createPdtImgWrap(imgDataOption); 
+}
+
+//검색 결과 및 자동완성 영역 장바구니 개별 담기
+async function clickAddCartProd(saleCmdtDvsnCode, saleCmdtGrpDvsnCode, saleCmdtid, cmdtcode, combCmdtCode, prhbAge) {
+    await KbbJS.auth.authorize();
+    
+    var loginCheck = KbbJS.auth.authorized;
+    var tmprMmbrNum = null;     //비회원번호
+    var userAdultVerify = false;
+    var oljeProdCheck = false;  //NetFunnel "olje" 체크
+
+    // 19금 상품인 경우
+    if(prhbAge == 1 || prhbAge == 19){
+        if(!loginCheck){
+            KbbJS.ui.alert({
+                "text": "본 상품은 청소년유해물로서 19세 미만의 청소년은 이용하실 수 없습니다. 로그인 후 이용하세요.",
+                "confirm": {
+                    "label": "확인",
+                    "callback": function() {
+                        var nowURL = window.location.protocol + "//" + window.location.host + window.location.pathname+window.location.search;
+                        location.href = autoLoginDomain + "?continue="+encodeURIComponent(nowURL)+"&login-channel=101";
+                    }
+                }
+            });
+            return false;
+        }else{
+            KbbJS.user.model.data.roles.forEach((val) => {
+                if (val == "adult") {
+                    userAdultVerify = true;
+                }
+            });
+             
+            if(!userAdultVerify){
+                KbbJS.ui.alert({
+                    "text": "본 상품은 만 19세 이상 이용가능한 상품입니다. 회원가입 시에 본인인증을 하지 않고 가입한 고객님께서는 마이룸 > 회원정보수정 페이지에서 본인인증을 하신 후에 이용해 주시기 바랍니다.",
+                    "confirm": {
+                        "label": "확인",
+                        "callback": function() {
+                            var nowURL = window.location.protocol + "//" + window.location.host + window.location.pathname+window.location.search;
+                            location.href = autoAuthVerifyDomain + "?continue="+encodeURIComponent(nowURL);
+                        }
+                    }
+                });
+                return false; 
+            }
+        }
+    }
+
+    //선택형 패키지 상품인 경우
+    if("CMB" == saleCmdtDvsnCode && "2" == combCmdtCode) {
+        goRqrdOptProdDetail(saleCmdtDvsnCode, saleCmdtid, cmdtcode);
+        return false;
+    }   
+
+    //로그인 상태와 디지털컨텐츠, 기프트가드, 컬쳐 상품 여부 확인 - 디지털컨텐츠, 기프트가드, 컬쳐 상품 포함시 로그인 필요    
+    if(("SGD" == saleCmdtGrpDvsnCode || "SGG" == saleCmdtGrpDvsnCode || "SGC" == saleCmdtGrpDvsnCode) && !loginCheck) {
+        searchLoginAlert();
+        return false;
+    }
+
+    if (!loginCheck && getSearchCommonCookie("tmprMmbrNum") == "") {
+        tmprMmbrNum = setTempMemberCookie();
+    }else{
+        tmprMmbrNum = getSearchCommonCookie("tmprMmbrNum");
+    }
+    
+    //필수옵션 선택 상품 여부 확인
+    KbbJS.$http(autoHostApiDomain+"/api/gw/ord/cart/chk-select-rqrd-opt?saleCmdtid=" + saleCmdtid).then(res => {
+        if (res.data == "N") {
+            goRqrdOptProdDetail(saleCmdtDvsnCode, saleCmdtid, cmdtcode);
+        }else{
+    
+            var addCartProcList = [{ordQty: 1, saleCmdtGrpDvsnCode: saleCmdtGrpDvsnCode, saleCmdtid: saleCmdtid, spbkDvsnCode: "002"}];
+            const cartParam = {
+                addCartProcList: addCartProcList,
+                tmprMmbrNum: tmprMmbrNum
+            }
+            
+            // NetFunnel "olje" data 체크
+            const oljeData = NetFunnel.getDataList('olje');
+            if(oljeData.includes(saleCmdtid)) {
+                oljeProdCheck = true;
+            }
+            
+            if(saleCmdtDvsnCode == "POD"){
+                if(oljeProdCheck){
+                    // NetFunnel_Action, NetFunnel "olje" 서비스 액션 실행                                        
+                    const callback = searchPodProdAddCartProc.bind(this, cartParam, "002");
+                    NetFunnel.customAction('olje', saleCmdtid, callback);
+                }else{
+                    searchPodProdAddCartProc(cartParam, "002");    
+                }
+            }else{
+                if(oljeProdCheck){
+                    // NetFunnel_Action, NetFunnel "olje" 서비스 액션 실행
+                    const callback = searchAddCartProc.bind(this, cartParam, "002");
+                    NetFunnel.customAction('olje', saleCmdtid, callback);
+                }else{
+                    searchAddCartProc(cartParam, "002");    
+                }                
+            }
+        }
+    }).catch(errors => {
+        KbbJS.ui.toast("문제가 발생하였습니다.\n다시 시도해주세요.");
+    });    
+}
+
+//기본 장바구니 담기 api 호출 - 개별 담기
+function searchAddCartProc(cartParam, spbkDvsnCode) {
+
+    // spbkDvsnCode: 바로구매 001, 장바구니 002, 바로드림 004 
+    // resultCode -> INS: 정상, UPD: 수량 업데이트, OVF: 최대수량 초과
+    KbbJS.$http(autoHostApiDomain+"/api/gw/ord/cart/addCartProc", {
+        method: 'post',
+        body: cartParam
+    }).then(res => {
+        if(res.resultCode == "S200"){
+            if(spbkDvsnCode == "002"){
+                if(res.data[0].resultCode == "OVF"){
+                    KbbJS.ui.alert("장바구니 최대 보관 수량(200개)을 초과하여 더 이상 담을 수 없습니다.");
+                    return false;
+                }else if(res.data[0].resultCode == "UPD" && res.data.length == 1){
+                    var title_text = "장바구니에 이미 담은 상품이 있어<br>수량이 추가 되었습니다.";
+                }else{
+                    var title_text = "상품이 장바구니에 담겼습니다.";
+                    gaAddData(spbkDvsnCode);
+                }
+                KbbJS.ui.alert({
+                    "title": title_text,
+                    "text": "장바구니로 이동하시겠습니까?",
+                    "cancel": {
+                        "label": "취소"
+                    },
+                    "confirm": {
+                        "label": "확인",
+                        "callback": function() {
+                            location.href = autoOrderDomain + "cart";
+                        }
+                    }
+                });                          
+            }else if(spbkDvsnCode == "001"){
+                if(res.data[0].resultCode == "OVF"){
+                    KbbJS.ui.alert("장바구니 최대 보관 수량(200개)을 초과하여 더 이상 담을 수 없습니다.");
+                    return false;
+                } 
+                // 사은품 선택 대상이 있는 상품(결합상품 등)의 경우 바로구매 API 사용 시 대상상품(spbk_ids)을 , 로 연결해 전달 해야 함.
+                var spbk_ids = "";
+                res.data.forEach((element) => {
+                    const separator = ",";
+                    if (element.spbkId != "" && element.spbkId != undefined){
+                        if (spbk_ids.length == 0){
+                            spbk_ids = spbk_ids + element.spbkId;
+                        } else {
+                            spbk_ids = spbk_ids + separator + element.spbkId;
+                        }
+                    }
+                });
+                location.href = autoOrderDomain + "order/freebie?spbkIds="+spbk_ids+"&spbkDvsnCode=001";
+            }else if(spbkDvsnCode == "004"){
+                if(res.data[0].resultCode == "OVF"){
+                    KbbJS.ui.alert("장바구니 최대 보관 수량(200개)을 초과하여 더 이상 담을 수 없습니다.");
+                    return false;
+                } 
+                // 바로구매와 동일 
+                var spbk_ids = "";
+                res.data.forEach((element) => {
+                    const separator = ",";
+                    if (element.spbkId != "" && element.spbkId != undefined){
+                        if (spbk_ids.length == 0){
+                            spbk_ids = spbk_ids + element.spbkId;
+                        } else {
+                            spbk_ids = spbk_ids + separator + element.spbkId;
+                        }
+                    }
+                });
+                location.href = autoOrderDomain + "cart/baro-dream?spbkIds="+spbk_ids+"&spbkDvsnCode=004";
+            }
+        }else{
+            KbbJS.ui.toast("문제가 발생하였습니다.\n다시 시도해주세요.");
+        } 
+    }).catch(errors => {
+        KbbJS.ui.toast("문제가 발생하였습니다.\n다시 시도해주세요.");
+    });
+}
+
+//POD상품이 포함된 경우 안내 메세지 후 장바구니 담기 api 호출
+function searchPodProdAddCartProc(cartParam, spbkDvsnCode) {
+    KbbJS.ui.alert({
+        "title": "POD도서는 고객 주문 후 제작되는 도서로, 단순변심 및 착오로 인한 취소, 반품이 절대 불가하니 이점 반드시 유의하여 주시기 바랍니다.",
+        "text": "취소/반품 안내에 동의합니다.",
+        "cancel": {
+            "label": "취소"
+        },
+        "confirm": {
+            "label": "확인",
+            "callback": function() {
+                searchAddCartProc(cartParam, spbkDvsnCode);
+            }
+        }
+    });     
+}
+
+//필수 옵션 선택 상품 상세 페이지 이동
+function goRqrdOptProdDetail(saleCmdtDvsnCode, saleCmdtid, cmdtcode){
+    var prodDetailDomain = "";
+    
+    if(saleCmdtDvsnCode == "MUC" || saleCmdtDvsnCode == "DVD" || saleCmdtDvsnCode == "GFT" || saleCmdtDvsnCode == "BLURAY" || saleCmdtDvsnCode == "DUM"){
+        prodDetailDomain = getProdDetailDomain(saleCmdtDvsnCode)+cmdtcode;                
+    }else{
+        prodDetailDomain = getProdDetailDomain(saleCmdtDvsnCode)+saleCmdtid;
+    }  
+        
+    KbbJS.ui.alert({
+        "title": "옵션이 있는 상품이 있습니다.",
+        "text": "상품상세로 이동하시겠습니까?",
+        "cancel": {
+            "label": "취소"
+        },
+        "confirm": {
+            "label": "확인",
+            "callback": function() {
+                location.href = prodDetailDomain;
+            }
+        }
+    });
+}
+
+//주문을 위한 비회원 번호 생성 및 쿠키 저장
+function setTempMemberCookie() {
+    var tmprMmbrNum = "";
+    var today = new Date();
+    today.setHours(today.getHours() + 9);
+    today = today.toISOString().replaceAll('-', '').replaceAll(':', '').replace('T', '').substring(0, 14)
+    tmprMmbrNum = today+"_0"+(Math.floor(9e3*Math.random())+1e3);
+    var expiresDate = new Date();    
+    expiresDate.setHours(expiresDate.getHours() + 3);   //tmprMmbrNum의 유효시간 3시간 설정
+    document.cookie = "tmprMmbrNum="+tmprMmbrNum+"; path=/; expires=" + expiresDate.toUTCString() + "; domain=.kyobobook.co.kr";
+    
+    return tmprMmbrNum;
+}
+
+//쿠키 값 가져오기 공통
+function getSearchCommonCookie(cName) {
+      cName = cName + '=';
+      var cookieData = document.cookie;
+      var start = cookieData.indexOf(cName);
+      var cValue = '';
+      if(start != -1){
+        start += cName.length;
+        var end = cookieData.indexOf(';', start);
+        if(end == -1)end = cookieData.length;
+        cValue = cookieData.substring(start, end);
+      }
+      return unescape(cValue);
+}
+
+//url 파라미터 값 GET
+function getAutoSearchParam(name) {
+    var curr_url = location.search.substr(location.search.indexOf("?") + 1);
+    var svalue = "";
+    curr_url = curr_url.split("&");
+    for (var i = 0; i < curr_url.length; i++) {
+        temp = curr_url[i].split("=");
+        if ([temp[0]] == name) { svalue = temp[1]; }
+    }
+    
+    svalue = svalue.replace(/\+/g, "%20");  //"+"로 되어 있는 공백 표현을 "%20"로 변환
+    
+    return svalue;
+}
+
+
+function searchLoginAlert(){
+    KbbJS.ui.alert({
+        "title": "로그인 후 이용가능합니다",
+        "text": "로그인 페이지로 이동하시겠습니까?",
+        "cancel": {
+            "label": "취소"
+        },
+        "confirm": {
+            "label": "확인",
+            "callback": function(bool) {
+                var nowURL = window.location.protocol + "//" + window.location.host + window.location.pathname+window.location.search;
+                location.href = autoLoginDomain + "?continue="+encodeURIComponent(nowURL)+"&login-channel=101";
+            }
+        }
+    });  
+}
+
+//자동완성 이미지 로딩 실패시
+function autoOnErrorImage(_img) {
+    $(_img).parent().addClass("no_img");
+    $(_img).remove();
+}
+
+
+
+// ********** 자동완성 영역에 필요한 함수를 ui_search_ink.js에서 kyobo_search_auto.js로 이동(setSearchKeywordProdSwiper, setSearchRelatedProdSwiper, setSearchRelatedEventSwiper) ********** 
+
+// 검색 전 - 지금 많이 찾는 상품 or 함께 많이 본 상품 swiper
+function setSearchKeywordProdSwiper() {
+    if ($('.keyword_prod_swiper_wrap .keyword_prod_swiper .swiper-slide').length > 1){
+        $('.control_keyword_prod').css('display', 'block');
+
+        var keywordProdSwiper = new CustomSwiper('.keyword_prod_swiper_wrap .keyword_prod_swiper', {
+            slidesPerView: '1',
+            speed: 500,
+            spaceBetween: 20,
+            navigation: {
+                nextEl: $('.control_keyword_prod').find('.swiper_control_box .swiper-button-next')[0],
+                prevEl: $('.control_keyword_prod').find('.swiper_control_box .swiper-button-prev')[0],
+            },
+            pagination: {
+                el: $('.control_keyword_prod').find('.swiper_control_box .swiper-pagination')[0],
+                type: "fraction",
+                formatFractionCurrent: function (number) {
+                    return KyoboBookPub.ink.setPrependZero(number, 2);
+                },
+                formatFractionTotal: function (number) {
+                    return KyoboBookPub.ink.setPrependZero(number, 2);
+                },
+            },
+        });
+    } else {
+        $('.control_keyword_prod').css('display', 'none');
+    }
+}
+
+// 검색 후 - 관련 상품
+function setSearchRelatedProdSwiper() {
+    if ($('.related_prod_swiper_wrap .related_prod_swiper .swiper-slide').length > 1){
+        var keywordRelatedProdSwiper = new CustomSwiper('.related_prod_swiper_wrap .related_prod_swiper', {
+            slidesPerView: '1',
+            speed: 500,
+            spaceBetween: 20,
+            navigation: {
+                nextEl: $('.related_prod_swiper_wrap').find('.swiper_control_box .swiper-button-next')[0],
+                prevEl: $('.related_prod_swiper_wrap').find('.swiper_control_box .swiper-button-prev')[0],
+            },
+            pagination: {
+                el: $('.related_prod_swiper_wrap').find('.swiper_control_box .swiper-pagination')[0],
+                type: "fraction",
+                formatFractionCurrent: function (number) {
+                    return KyoboBookPub.ink.setPrependZero(number, 2);
+                },
+                formatFractionTotal: function (number) {
+                    return KyoboBookPub.ink.setPrependZero(number, 2);
+                },
+            },
+        });
+    } else {
+        $('.related_prod_swiper_wrap').find('.swiper_control_box').css('display', 'none');
+    }
+}
+
+// 검색 후 - 관련 이벤트
+function setSearchRelatedEventSwiper() {
+    if ($('.related_event_swiper_wrap .event_swiper_wrap .swiper-slide').length > 1){
+        var keywordEventSwiper = new CustomSwiper('.related_event_swiper_wrap .event_swiper_wrap .swiper-container', {
+            slidesPerView: 'auto',
+            slidesPerGroup: 2,
+            speed: 500,
+            navigation: {
+                nextEl: $('.control_related_event').find('.swiper_control_box .swiper-button-next')[0],
+                prevEl: $('.control_related_event').find('.swiper_control_box .swiper-button-prev')[0],
+            },
+            pagination: {
+                el: $('.control_related_event').find('.swiper_control_box .swiper-pagination')[0],
+                type: "fraction",
+                formatFractionCurrent: function (number) {
+                    return KyoboBookPub.ink.setPrependZero(number, 2);
+                },
+                formatFractionTotal: function (number) {
+                    return KyoboBookPub.ink.setPrependZero(number, 2);
+                },
+            },
+        });
+    } else {
+        $('.control_related_event').css('display', 'none');
+    }
+}
+
+// GA에 필요한 데이터 세팅하기
+function setGAData(eventName, eventType, itemId, itemName, itemCategory) {
+    gaEventName = eventName
+    gaEventType = eventType
+    gaItemId = itemId
+    gaItemName = itemName
+    gaItemCategory = itemCategory
+}
+
+// GA에 데이터 담기
+function gaAddData(spbkDvsnCode) {
+    // spbkDvsnCode: 바로구매 001, 장바구니 002, 바로드림 004 
+    switch (spbkDvsnCode) {
+        case '001':
+            gaBeginCheckOut();
+            break;    
+        case '002':
+            gaAddToCart();
+            break;
+        case '004':
+            gaBaroDreamBeginCheckOut();
+            break;
+        default:
+            break;
+    }
+}
+
+function gaAddToCart() {
+    try {
+        ga360.EcommerceSet(
+            gaEventName, 
+            [{
+                item_id: gaItemId, 
+                item_name: gaItemName, 
+                item_category: gaItemCategory,
+                quantity: 1,
+                currency: 'KRW'
+            }], 
+            {currency: 'KRW'}, 
+            {
+                ep_ecommerce_section: gaEventType, 
+                ep_item_id: gaItemId, 
+                ep_item_name: gaItemName,
+                ep_item_category: gaItemCategory
+            },
+            {}
+        );
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+function gaBaroDreamBeginCheckOut() {
+    try {
+        ga360.EcommerceSet(
+            gaEventName, 
+            [{
+                item_id: gaItemId, 
+                item_name: gaItemName, 
+                item_category: gaItemCategory,
+                quantity: 1,
+                currency: 'KRW',
+                affiliation: '바로드림'
+            }], 
+            {currency: 'KRW'}, 
+            {
+                ep_ecommerce_section: gaEventType, 
+                ep_item_id: gaItemId, 
+                ep_item_name: gaItemName,
+                ep_item_category: gaItemCategory
+            },
+            {}
+        );
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+function gaBeginCheckOut() {
+    try {
+        ga360.EcommerceSet(
+            gaEventName, 
+            [{
+                item_id: gaItemId, 
+                item_name: gaItemName, 
+                item_category: gaItemCategory,
+                quantity: 1,
+                currency: 'KRW',
+                affiliation: '바로구매'
+            }], 
+            {currency: 'KRW'}, 
+            {
+                ep_ecommerce_section: gaEventType, 
+                ep_item_id: gaItemId, 
+                ep_item_name: gaItemName,
+                ep_item_category: gaItemCategory
+            },
+            {}
+        );
+    } catch (error) {
+        console.log(error)
+    }
+}
+// ga360 탭명 번역
+function GA_ChangeTartgetNm(param1, target, param3, param4, param5, param6) {
+    let result =""
+    switch(target) {
+        case 'total' :
+            result = "통합검색"
+
+        case 'kyobo' :
+            result = "교보문고"
+
+        case 'ebook' :
+            result = "eBook"
+
+        case 'sam' :
+            result = "sam"
+
+        case 'hottracks' :
+            result = "핫트랙스"
+
+        default :
+            result = "통합검색"
+    }
+    
+    gaEventTryCatch(param1, `검색결과_${result}`, param3, param4, param5, param6)
+}
+
+
+// ga360.GA_Event try문
+function gaEventTryCatch(param1, param2, param3, param4, param5, param6) {
+    try {
+        window.ga360.GA_Event(param1, param2, param3, param4, param5, param6)
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+// avoid quot conflict
+function avoidQuotes(str){
+    return "decodeURIComponent(&quot;"+encodeURIComponent(str)+"&quot;)";
+}
+
+// avoid html tag
+function escapetHtml(str){
+    str = str.replace(/</g,"&lt;");
+    str = str.replace(/>/g,"&gt;");
+    str = str.replace(/\"/g,"&quot;");
+    str = str.replace(/\'/g,"&#39;");
+    str = str.replace(/\n/g,"<br />");
+    return str;
+}
+
+//함께본상품 로그 입력 - 20230119 사용자 행동기반 로그 나이대 및 성별 추가 
+function setWebRecommShop(cmdtCode, dvsnCode, clstCode, mmbrNum, deviceType, loginAge, loginGender){
+    var keyword = $("#searchKeyword").val();
+    const param = "keyword="+keyword+"&cmdtCode="+cmdtCode+"&dvsnCode="+dvsnCode+"&clstCode="+clstCode+"&mmbrNum="+mmbrNum+"&deviceType="+deviceType+"&loginAge="+loginAge+"&loginGender="+loginGender;
+    KbbJS.$http(autoSearchDomain+"search/api/gw/log/recomm-shop?"+param);
+}
+
+// 외부 스크립트 로드
+async function loadScript(FILE_URL, async = true, type = "text/javascript"){
+    return new Promise((resolve, reject) => {
+        try {
+            const scriptEle = document.createElement("script");
+            scriptEle.type = type;
+            scriptEle.async = async;
+            scriptEle.src = FILE_URL;
+
+            scriptEle.addEventListener("load", (ev) => {
+                resolve({ status: true });
+            });
+
+            scriptEle.addEventListener("error", (ev) => {
+                reject({
+                    status: false,
+                    message: `Failed to load the script ＄{FILE_URL}`
+                });
+            });
+
+            document.body.appendChild(scriptEle);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+async function setLoginInfo(){
+    loginAge = $("#loginAgeHidden").val();
+    loginGender = $("#loginGenderHidden").val();
+    loginMmbrNum = $("#loginMmbrNumHidden").val();
+    
+    // hidden 태그에 없는 경우만 실행
+    if( SCF.isEmpty(loginAge) || SCF.isEmpty(loginGender) || SCF.isEmpty(loginMmbrNum)
+        || loginAge == "0" || loginGender == "0" || loginMmbrNum == "" ){
+        await KbbJS.ready('auth').then(auth => auth.authorize());
+        var age = 0;
+        var gender = "0";
+        var mmbrNum = "";
+    
+        if (KbbJS.auth.authorized) {
+            age = KbbJS.user.model.age;
+            age = age >= 40 ? 40 : Math.floor(age / 10) * 10; 
+            gender = KbbJS.user.model.data.gndrCodeName;
+            gender = gender == "남" || gender == "여" ? gender == "남" ? "1" : "2" : "0"; //남, 여, 없음
+            mmbrNum = KbbJS.user.model.data.mmbrNum;
+        }
+        loginAge = age;
+        loginGender = gender;
+        loginMmbrNum = mmbrNum;
+    }
+}
+
+// 찜하기 누른 경우
+function addWishEvent(serverType, cmdtType, dqId, el, typeCd, cmdtcode, gaType, nbopDvsnCode){
+    var actionData = {};
+    actionData.serverType = serverType;
+    actionData.cmdtType = cmdtType;
+    actionData.gaType = gaType;
+    actionData.el = el;
+    actionData.dqId = dqId;
+    SCE.addWishItem(el, typeCd, nbopDvsnCode, cmdtcode, dqId, actionData);
+}
+
+// 검색용 클릭 이벤트 공통 처리
+// 예) searchClickEvent('cart', 'PC', '종이책', [[${item.DQ_ID}]], [[${item.CMDT_NAME}]], [[${item.SALE_CMDT_DVSN_CODE}]], [[${item.SALE_CMDT_CLST_CODE}]], [[${item.SALE_CMDT_GRP_DVSN_CODE}]], [[${item.CMDTCODE}]], [[${item.COMB_CDMT_YSNO}]], [[${item.PRHB_AGE}]]);
+function searchClickEvent(_type, serverType, cmdtType, dqId, cmdtName, saleCmdtDvsnCode, saleCmdtClstCode, saleCmdtGrpDvsnCode, cmdtcode, combCdmtYsno, prhbAge){
+    try{
+        SCE.setGAData(_type, dqId, cmdtName, cmdtType);
+        SCE.gaEventTryCatch(_type, serverType, cmdtType);
+        SCE.setWebRecommShop(serverType, cmdtcode, saleCmdtDvsnCode, saleCmdtClstCode);
+        SCE.kakaoPixel(_type, dqId);
+        SCE.qbotAddCart(_type, cmdtcode);
+    } catch(e){ console.log(e); }
+    SCE.action(_type, saleCmdtDvsnCode, saleCmdtGrpDvsnCode, dqId, cmdtcode, combCdmtYsno, prhbAge);
+}
+
+// SearchClickEvent
+var SCE = {
+    "addWishItem" : function(el, typeCd, nbopDvsnCode, cmdtcode, dqId, actionData){
+        var wishItemId = SCF.isEmpty(cmdtcode) ? dqId : cmdtcode;   // wishItemId : 핫트랙스는 cmdtcode 사용, 나머지는 dqId
+        nbopDvsnCode = SCF.isEmpty(nbopDvsnCode) ? '001' : nbopDvsnCode;    // 찜구분코드(판매상품:001,컨텐츠:002,문장수집:003,시리즈/총서:004,작가:005,브랜드:006)
+        clickWishItem(el, typeCd, nbopDvsnCode, wishItemId, actionData);        // this, '001', '001', 'S000001687079'
+    }
+    ,"addWishActionData" : function(actionData){
+        SCE.gaEventTryCatchWish(actionData.serverType, actionData.cmdtType, actionData.gaType, actionData.el);
+        SCE.kakaoPixelWish(actionData.dqId);
+        SCE.qbotAddWish($(actionData.el).attr("data-cmdtcode"));
+    }
+    ,"gaEventTryCatchWish" : function(serverType, cmdtType, gaType, el){        
+        var gaEventType = ESO[serverType]['gaEventType'];       // click_검색_PC | click_검색_MO
+        var gaEventResult = ESO['result'][cmdtType];            // 검색결과_교보문고 | 검색결과_eBook | 검색결과_핫트랙스
+        var gaPrd = SCF.isEmpty(gaType) ? '상품' : '함께많이본상품';      // gaPrd : 상품(기본), 함께많이본상품
+        var gaEventAction = el.className.includes('active') ? '찜하기취소' : '찜하기';
+        gaEventTryCatch(gaEventType, gaEventResult, gaPrd, gaEventAction, '', ''); //'click_검색_PC', '검색결과_교보문고', '상품', '찜하기취소', '', ''
+    }
+    ,"kakaoPixelWish" : function(dqId){
+        // kakaopixel js 로드 불필요, kbb.stats 에서 생성.
+        // kakaopixel pageview 실행 필요 없음(kbb.stats에서 처리)
+        try{
+            kbb.stats.ready('kakaopixel').then(()=>{
+                kakaoPixel().addToWishList({
+                    id: dqId  // S000001687079 
+                });
+            });
+        } catch(e) { 
+            console.log(e); 
+        }
+    }
+    ,"setGAData" : function(_type, dqId, cmdtName, cmdtType){
+        var gaDataType = ESO[_type]['dataType'];                // add_to_cart | begin_checkout
+        var gaDataTypeDtl = ESO[_type]['dataTypeDtl'];          // add_to_cart>검색_검색결과 | begin_checkout>검색결과
+        setGAData(gaDataType, gaDataTypeDtl, dqId, cmdtName, cmdtType); //'add_to_cart', 'add_to_cart>검색_검색결과', "S000001687079", "\uBD80\uC790\uC758 \uADF8\uB987", '종이책'
+    }
+    ,"gaEventTryCatch" : function(_type, serverType, cmdtType){        
+        var gaEventType = ESO[serverType]['gaEventType'];       // click_검색_PC | click_검색_MO
+        var gaEventResult = ESO['result'][cmdtType];            // 검색결과_교보문고 | 검색결과_eBook | 검색결과_핫트랙스
+        var gaEventAction = ESO[_type]['action'];               // 장바구니 | 바로드림 | 바로구매
+        gaEventTryCatch(gaEventType, gaEventResult, '상품', gaEventAction, '', ''); //'click_검색_PC', '검색결과_교보문고', '상품', '장바구니', '', ''    
+    }
+    ,"action" : function(_type, saleCmdtDvsnCode, saleCmdtGrpDvsnCode, dqId, cmdtcode, combCdmtYsno, prhbAge){
+        var func = ESO[_type]['func'];                          // clickAddCartProd, clickDirectPickUp, clickDirectOrder
+        func(saleCmdtDvsnCode, saleCmdtGrpDvsnCode, dqId, cmdtcode, combCdmtYsno, prhbAge); // "KOR", "SGK", "S000001687079", "9791130633619", "0", "0"
+    }
+    ,"setWebRecommShop" : function(serverType, cmdtcode, saleCmdtDvsnCode, saleCmdtClstCode){        
+        var webRecommType = ESO[serverType]['recommType'];      // P | M
+        try{
+            // 메인 -> 검색 서버 호출 시 cors 에러로 인하여 오류 발생
+            // 추후 검색 서버 cors 해결을 위한 설정 변경 예정
+            setWebRecommShop(cmdtcode, saleCmdtDvsnCode, saleCmdtClstCode, loginMmbrNum, webRecommType, loginAge, loginGender); // "9791130633619", "KOR", "000000", "00000000000" 'P', "0", "0"
+        }catch(e){ console.log(e); }
+    }
+    ,"kakaoPixel" : function(_type, dqId){
+        var gaEventAction = ESO[_type]['action'];               // 장바구니 | 바로드림 | 바로구매
+        if(gaEventAction == '장바구니'){
+            // kakaopixel js 로드 불필요, kbb.stats 에서 생성.
+            // kakaopixel pageview 실행 필요 없음(kbb.stats에서 처리)
+            try{
+                kbb.stats.ready('kakaopixel').then(()=>{
+                    kakaoPixel().addToCart({
+                        id: dqId  // S000001687079 
+                    });
+                });
+            } catch(e) { 
+                console.log(e); 
+            }
+        }
+    }
+    ,"qbotJsInit" : function(){
+        loadScript("//logger.eigene.io/js/logger.min.js");
+    }
+    ,"qbotSearchInit" : function(){
+        qbotCUID = isDevHost() ? "2e514b09-86fe-4c69-8ec9-0a8c8416d2ae": "4ffe4f3c-7219-4bd2-a7ae-eba4aefc9b19";
+        if( !SCF.isSearchKeywordEmpty() ){
+            window._eglqueue = window._eglqueue || [];
+            _eglqueue.push(['setVar', 'cuid', qbotCUID]);
+            _eglqueue.push(['setVar', 'searchTerm', SCF.getSearchKeyword()]);
+            _eglqueue.push(['setVar', 'userId', SCF.getUserId()]); // optional
+            _eglqueue.push(['track', 'search']);            
+        }
+        SCE.qbotJsInit(); // 위에 변수 선언 후, js 로드 되어야 됨
+    }
+    ,"qbotAddCart" : function(_type, cmdtcode){
+        if(_type != "cart"){ return; }
+        eglc.op('setVar', 'cuid', qbotCUID);
+        eglc.op('setVar', 'itemId', cmdtcode);
+        eglc.op('setVar', 'userId', SCF.getUserId());
+        eglc.op('track', 'add_to_cart');
+    }
+    ,"qbotAddWish" : function(cmdtcode){
+        eglc.op('setVar', 'cuid', qbotCUID);
+        eglc.op('setVar', 'itemId', cmdtcode);
+        eglc.op('setVar', 'userId', SCF.getUserId());
+        eglc.op('track', 'zzim');
+    }
+};
+// ********************************************************************************

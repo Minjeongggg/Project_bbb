@@ -1,0 +1,1400 @@
+/* eslint-disable no-var */
+/* globals KbbJS */
+
+// console.log('* [loaded] /CDN/js/ga360/util.js')
+window.dataLayer = window.dataLayer || [];
+window.ga360 = window.ga360 || {};
+
+// IIFE
+; (function () {
+  const ga360 = KbbJS.getOption('ga360.welcome.var')
+  class Ga360Class {
+    constructor() {
+      // this.init()
+      this.domReady()
+    }
+
+    // init() {
+    //   console.log('---init---')
+    // }
+
+    domReady() {
+      this.render()
+    }
+
+    render() {
+      const pageDict = {
+        // 'https://kyobobook.co.kr/':'교보문고>웰컴>웰컴 메인',
+        // 'https://mmbr.kyobobook.co.kr/join':'교보문고>회원가입>메인',
+        // 'https://mmbr.kyobobook.co.kr/benefit':'교보문고>회원혜택>교보북클럽',
+        'http://localhost:3100': '로컬용 동작 확인 타이틀',
+        'https://product.ndev.kyobobook.co.kr': '테스트성공',
+        'https://ebook.ndev.kyobobook.co.kr': 'ebook 테스트성공',
+        // 공통 , 2022.10.17 수정
+        'https://search.kyobobook.co.kr/search': '통합검색',
+        'https://mmbr.kyobobook.co.kr/login': '로그인',
+        'https://mmbr.kyobobook.co.kr/find/id-password': '아이디찾기/비밀번호찾기',
+        'https://mmbr.kyobobook.co.kr/join': '회원가입>메인',
+        'https://mmbr.kyobobook.co.kr/join/verify/self': '회원가입>본인인증',
+        'https://mmbr.kyobobook.co.kr/join/form/self': '회원가입>정보입력',
+        // 공통 , 2022.10.25 수정
+        'https://mmbr.kyobobook.co.kr/join/finish': '회원가입>가입완료',
+        'https://order.kyobobook.co.kr/cart': '장바구니>기본화면',
+        'https://my.kyobobook.co.kr/main': '마이룸>메인',
+        'https://order.kyobobook.co.kr/myroom/member/order-list': '마이룸>쇼핑내역>주문/배송목록',
+        'https://order.kyobobook.co.kr/myroom/member/gift-detail': '마이룸>쇼핑내역>선물함',
+        'https://order.kyobobook.co.kr/myroom/member/receipt': '마이룸>쇼핑내역>온오프라인영수증',
+        'https://order.kyobobook.co.kr/myroom/member/receipt-benefit': '마이룸>쇼핑내역>영수증후적립',
+        'https://order.kyobobook.co.kr/myroom/member/tax-invoice': '마이룸>쇼핑내역>세금계산서조회/신청',
+        'https://my.kyobobook.co.kr/library': '마이룸>라이브러리>메인',
+        'https://my.kyobobook.co.kr/library/list': '마이룸>라이브러리>리스트',
+        'https://my.kyobobook.co.kr/library/comment': '마이룸>라이브러리>코멘트',
+        'https://my.kyobobook.co.kr/library/review': '마이룸>라이브러리>클로버리뷰',
+        'https://my.kyobobook.co.kr/library/sentences': '마이룸>라이브러리>문장수집',
+        'https://my.kyobobook.co.kr/library/wish': '마이룸>라이브러리>찜',
+        'https://my.kyobobook.co.kr/library/subscribe': '마이룸>라이브러리>구독',
+        'https://my.kyobobook.co.kr/activity/community': '마이룸>활동내역>커뮤니티활동내역',
+        'https://my.kyobobook.co.kr/activity/events': '마이룸>활동내역>이벤트참여내역',
+        'https://my.kyobobook.co.kr/activity/culture': '마이룸>활동내역>문화공간이용내역',
+        'https://order.kyobobook.co.kr/myroom/benefit/coupon-list': '마이룸>혜택/포인트>쿠폰',
+        'https://order.kyobobook.co.kr/myroom/benefit/point': '마이룸>혜택/포인트>통합포인트',
+        'https://order.kyobobook.co.kr/myroom/benefit/deposit': '마이룸>혜택/포인트>예치금',
+        'https://order.kyobobook.co.kr/myroom/benefit/ecash': '마이룸>혜택/포인트>교보e캐시',
+        'https://order.kyobobook.co.kr/myroom/benefit/kyobocash': '마이룸>혜택/포인트>교보캐시',
+        'https://order.kyobobook.co.kr/myroom/benefit/ecoupon': '마이룸>혜택/포인트>e교환권',
+        'https://order.kyobobook.co.kr/myroom/benefit/giftcard': '마이룸>혜택/포인트>기프트카드',
+        'https://order.kyobobook.co.kr/myroom/benefit/mileage': '마이룸>혜택/포인트>마일리지',
+        'https://my.kyobobook.co.kr/consult/inquiry': '마이룸>문의내역>1:1문의',
+        'https://my.kyobobook.co.kr/consult/product': '마이룸>문의내역>상품문의',
+        'https://order.kyobobook.co.kr/myroom/member/address': '마이룸>회원정보>배송주소록',
+        'https://order.kyobobook.co.kr/myroom/member/regular-store': '마이룸>회원정보>MY매장',
+        'https://mmbr.kyobobook.co.kr/member-info': '마이룸>회원정보>회원정보관리>회원정보수정',
+        'https://mmbr.kyobobook.co.kr/member-info/sns': '마이룸>회원정보>회원정보관리>로그인설정',
+        'https://mmbr.kyobobook.co.kr/member-info/login': '마이룸>회원정보>회원정보관리>로그인정보관리',
+        'https://mmbr.kyobobook.co.kr/member-info/subscribe': '마이룸>회원정보>회원정보관리>마케팅수신및정보제공동의관리',
+        'https://mmbr.kyobobook.co.kr/member-info/card': '마이룸>회원정보>교보북클럽카드관리',
+        'https://mmbr.kyobobook.co.kr/member-info/benefit': '마이룸>회원정보>나의회원등급>나의회원등급혜택',
+        'https://my.kyobobook.co.kr/notice': '마이룸>알림함',
+        'https://my.kyobobook.co.kr/notice/history': '마이룸>알림신청내역>관심인물',
+        'https://my.kyobobook.co.kr/notice/history/series': '마이룸>알림신청내역>관심시리즈/총서',
+        'https://my.kyobobook.co.kr/notice/history/stock': '마이룸>알림신청내역>상품입고',
+        'https://my.kyobobook.co.kr/notice/history/eBook': '마이룸>알림신청내역>ebook출시',
+        'https://my.kyobobook.co.kr/notice/history/mail': '마이룸>알림신청내역>정기메일',
+        'https://my.kyobobook.co.kr/notice/history/live': '마이룸>알림신청내역>라이브',
+        'https://my.kyobobook.co.kr/notice/history/casting': '마이룸>알림신청내역>캐스팅',
+        'https://mmbr.kyobobook.co.kr/benefit': '회원혜택>교보북클럽',
+        'https://mmbr.kyobobook.co.kr/benefit/grade': '회원혜택>등급별혜택',
+        'https://mmbr.kyobobook.co.kr/benefit/new': '회원혜택>신규회원혜택',
+        'https://mmbr.kyobobook.co.kr/benefit/prestige': '회원혜택>PrestigeLounge',
+        'https://mmbr.kyobobook.co.kr/benefit/discount': '회원혜택>제휴포인트/상품권',
+        'https://mmbr.kyobobook.co.kr/benefit/service': '회원혜택>참좋은교보문고',
+        'https://www.kyobobook.co.kr/cscenter': '고객센터>메인',
+        'https://www.kyobobook.co.kr/cscenter/faq': '고객센터>자주묻는질문>BEST10',
+        'https://www.kyobobook.co.kr/cscenter/qna-form': '고객센터>1:1문의접수',
+        'https://www.kyobobook.co.kr/cscenter/notice/list': '고객센터>공지사항',
+        'https://big.kyobobook.co.kr/user/main/r/go': '고객센터>법인회원대량주문안내',
+        'https://www.kyobobook.co.kr/cscenter/ars': '고객센터>전화상담서비스안내도',
+        'https://event.kyobobook.co.kr/winner': '이벤트>당첨자발표',
+        'https://order.kyobobook.co.kr/order/order': '주문/결제>주문서>기본화면',
+        'https://order.kyobobook.co.kr/order/order-complete': '주문/결제>주문서>주문완료',
+        // if문 진행
+        'https://www.kyobobook.co.kr/cscenter/notice/detail': '고객센터>공지사항>상세',
+        'https://event.kyobobook.co.kr/winner/detail': '이벤트>당첨자발표>상세',
+        'https://www.kyobobook.co.kr/cscenter/faq?unfyFaqLscCode={{메뉴코드}}': '고객센터>자주묻는질문>{{메뉴명}}',
+        // 교보문고 , 2022.10.17 수정
+        'https://www.kyobobook.co.kr/': '교보문고>웰컴>웰컴메인',
+        'https://kyobobook.co.kr/': '교보문고>웰컴>웰컴메인',
+        'https://onk.kyobobook.co.kr/': '교보문고>웰컴>웰컴메인',
+        'https://product.kyobobook.co.kr/bestseller/total': '교보문고>베스트셀러>마케팅팝업',
+        'https://product.kyobobook.co.kr/bestseller/total': '교보문고>베스트셀러>종합베스트',
+        'https://product.kyobobook.co.kr/bestseller/online': '교보문고>베스트셀러>온라인베스트',
+        'https://product.kyobobook.co.kr/bestseller/realtime': '교보문고>베스트셀러>실시간베스트',
+        'https://product.kyobobook.co.kr/bestseller/store': '교보문고>베스트셀러>매장별베스트',
+        'https://product.kyobobook.co.kr/bestseller/age': '교보문고>베스트셀러>연령대베스트',
+        'https://product.kyobobook.co.kr/bestseller/sale': '교보문고>베스트셀러>특가베스트',
+        'https://product.kyobobook.co.kr/bestseller/years': '교보문고>베스트셀러>연도별베스트',
+        'https://product.kyobobook.co.kr/bestseller/person': '교보문고>베스트셀러>인물베스트',
+        'https://product.kyobobook.co.kr/bestseller/steady': '교보문고>스테디셀러>국내도서/외국도서',
+        'https://product.kyobobook.co.kr/new/': '교보문고>신상품>메인',
+        'https://product.kyobobook.co.kr/new/KOR': '교보문고>신상품>국내도서',
+        'https://product.kyobobook.co.kr/new/ENG': '교보문고>신상품>외국도서',
+        'https://product.kyobobook.co.kr/new/culture': '교보문고>신상품>교보only>컬쳐',
+        'https://product.kyobobook.co.kr/new/kyobo': '교보문고>신상품>교보only>교보문고굿즈',
+        'https://product.kyobobook.co.kr/today-book': '교보문고>오늘의선택',
+        'https://product.kyobobook.co.kr/booknflower/main': '교보문고>책그리고꽃',
+        'https://www.kyobobook.co.kr/service/profile/main': '교보문고>인물&작품',
+        'https://event.kyobobook.co.kr/': '교보문고>이벤트>이벤트메인',
+        'https://www.kyobobook.co.kr/service/gift-promotion/main': '교보문고>사은품',
+        'https://www.kyobobook.co.kr/present/main': '교보문고>선물하기',
+        'https://www.kyobobook.co.kr/review': '교보문고>통합리뷰',
+        'https://www.kyobobook.co.kr/handwriting': '교보문고>손글씨캠페인',
+        'https://www.kyobobook.co.kr/spring/main': '교보문고>분철서비스',
+        'https://www.kyobobook.co.kr/culture/main': '교보문고>문화공간',
+        'https://www.kyobobook.co.kr/service/special-price': '교보문고>특가',
+        'https://www.kyobobook.co.kr/service/re-price': '교보문고>정가인하',
+        'https://www.kyobobook.co.kr/giftcard': '교보문고>기프트카드',
+        'https://www.kyobobook.co.kr/read-index': '교보문고>수준별원서읽기',
+        'https://www.kyobobook.co.kr/benefit': '교보문고>고객혜택>할인혜택',
+        'https://event.kyobobook.co.kr/attendance': '교보문고>이벤트>출석체크',
+        'https://kyobobook.co.kr/barodrim': '교보문고>바로드림>메인',
+        // if문 진행
+        'https://product.kyobobook.co.kr/detail': '교보문고>상품상세',
+        'https://www.kyobobook.co.kr/picks/{{탭 주소}}': '교보문고>Picks>{{탭명}}',
+        'https://product.kyobobook.co.kr/category/{{카테고리 2값}}/{{카테고리 3값}}': '교보문고>{{카테고리 1depth}}>{{카테고리 2depth}}>{{카테고리 3depth}}',
+        // 핫트랙스
+        'http://hottracks.kyobobook.co.kr/ht/welcomeMain': '핫트랙스>웰컴메인',
+        'http://hottracks.kyobobook.co.kr/ht/coupon/cpnIncnt': '핫트랙스>쿠폰/혜택',
+        'http://hottracks.kyobobook.co.kr/ht/product/storeRecv': '핫트랙스>바로드림',
+        'https://hottracks.kyobobook.co.kr/ht/loginNouserForm': '핫트랙스>비회원주문조회',
+        'http://hottracks.kyobobook.co.kr/ht/record/recordMain': '핫트랙스>음반/영상>음반메인',
+        'http://hottracks.kyobobook.co.kr/ht/dvd/category/000401?mainYn=Y': '핫트랙스>음반/영상>DVD메인',
+        'http://hottracks.kyobobook.co.kr/ht/dvd/category/000400?mainYn=Y': '핫트랙스>음반/영상>BLU-RAY메인',
+        'https://hottracks.kyobobook.co.kr/ht/help/signMain': '핫트랙스>음반/영상>팬사인회목록',
+        'http://hottracks.kyobobook.co.kr/ht/record/bestList/0003': '핫트랙스>음반/영상>베스트',
+        'http://hottracks.kyobobook.co.kr/ht/record/newRecord/0003': '핫트랙스>음반/영상>신상품',
+        'http://hottracks.kyobobook.co.kr/ht/record/audio': '핫트랙스>음반/영상>AUDIOPHILE',
+        'http://hottracks.kyobobook.co.kr/ht/record/reserve/0003': '핫트랙스>음반/영상>예약상품',
+        'http://hottracks.kyobobook.co.kr/ht/record/lp': '핫트랙스>음반/영상>LPSHOP',
+        'http://hottracks.kyobobook.co.kr/ht/hot/hotdealMain?gnbIndex=2': '핫트랙스>오늘만특가',
+        'http://hottracks.kyobobook.co.kr/ht/hot/best': '핫트랙스>베스트>{{탭명}}',
+        'http://hottracks.kyobobook.co.kr/ht/hot/new': '핫트랙스>신상품>{{탭명}}',
+        'http://hottracks.kyobobook.co.kr/ht/hot/freeDelivery': '핫트랙스>무료배송>{{탭명}}',
+        'http://hottracks.kyobobook.co.kr/ht/brandDetail?brandId={{브랜드번호}}': '핫트랙스>브랜드샵',
+        'http://hottracks.kyobobook.co.kr/ht/gftReco/gftRecoFav?gnbIndex=5': '핫트랙스>선물추천>인기선물',
+        'http://hottracks.kyobobook.co.kr/ht/gftReco/gftRecoHot?gnbIndex=5': '핫트랙스>선물추천>핫트추천',
+        'https://hottracks.kyobobook.co.kr/ht/gftReco/gftRecoWor?gnbIndex=3': '핫트랙스>선물추천>선물고민',
+        'http://hottracks.kyobobook.co.kr/ht/live/liveMain': '핫트랙스>라이브>메인',
+        'http://hottracks.kyobobook.co.kr/ht/live/liveDetail/': '핫트랙스>라이브>상세',
+        'http://hottracks.kyobobook.co.kr/ht/curation/crtMain?gnbIndex=6': '핫트랙스>큐레이션>큐레이션메인',
+        'http://hottracks.kyobobook.co.kr/ht/curation/crtDetail/': '핫트랙스>큐레이션>큐레이션상세',
+        'https://hottracks.kyobobook.co.kr/ht/curation/crtMain?gnbIndex=4': '핫트랙스>큐레이션>취향발견',
+        'https://hottracks.kyobobook.co.kr/ht/curation/crtMainP?gnbIndex=4': '핫트랙스>큐레이션>맞춤추천',
+        'http://hottracks.kyobobook.co.kr/ht/evnExh/evnExhMain': '핫트랙스>이벤트>기획전',
+        'http://hottracks.kyobobook.co.kr/ht/evnExh/evnExhMain/1': '핫트랙스>이벤트>쇼핑이벤트',
+        'http://hottracks.kyobobook.co.kr/ht/evnExh/evnExhMain/c': '핫트랙스>이벤트>쿠폰상품존',
+        'http://hottracks.kyobobook.co.kr/ht/evnExh/evnExhMain/s': '핫트랙스>이벤트>매장이벤트',
+        'http://hottracks.kyobobook.co.kr/ht/evnExh/evnExhMain/3': '핫트랙스>이벤트>컬쳐이벤트',
+        'http://hottracks.kyobobook.co.kr/ht/evnExh/evnExhMain/w': '핫트랙스>이벤트>당첨자발표',
+        'http://hottracks.kyobobook.co.kr/ht/evnExh/evnWinDetail/': '핫트랙스>이벤트>당첨결과보기',
+        'http://hottracks.kyobobook.co.kr/ht/{{카테고리}}/detail/': '핫트랙스>상품상세',
+        'http://hottracks.kyobobook.co.kr/ht/help/helpMain': '핫트랙스>고객센터>메인',
+        'http://hottracks.kyobobook.co.kr/ht/help/faqList': '핫트랙스>고객센터>FAQ',
+        'http://hottracks.kyobobook.co.kr/ht/help/businessBuy': '핫트랙스>고객센터>대량구매상담',
+        'http://hottracks.kyobobook.co.kr/ht/help/vendorInquiry': '핫트랙스>고객센터>상품입점문의',
+        'http://hottracks.kyobobook.co.kr/ht/help/noticeList': '핫트랙스>고객센터>공지사항',
+        'http://hottracks.kyobobook.co.kr/ht/help/noticeDetail?notiSeq=': '핫트랙스>고객센터>공지사항>상세',
+        'http://hottracks.kyobobook.co.kr/ht/help/serviceInfo/cus_sv01': '핫트랙스>고객센터>서비스안내>각인서비스',
+        'http://hottracks.kyobobook.co.kr/ht/help/serviceInfo/cus_sv02': '핫트랙스>고객센터>서비스안내>포장서비스',
+        'http://hottracks.kyobobook.co.kr/ht/help/serviceInfo/cus_sv03': '핫트랙스>고객센터>서비스안내>제휴/할인카드',
+        'http://hottracks.kyobobook.co.kr/ht/{{카테고리}}/category/': '핫트랙스>카테고리목록>',
+        'https://ebook.kyobobook.co.kr/dig/pnd/welcome': '교보문고_eBook스토어>웰컴',
+        // 신규 추가 ebook, 2022.10.17
+        'https://ebook.kyobobook.co.kr/dig/cff/e-library': '교보문고_eBook스토어>전자도서관',
+        'https://ebook-product.kyobobook.co.kr/dig/epd/ebook': '교보문고_eBook스토어>상품상세',
+        'https://ebook.kyobobook.co.kr/dig/etc/rtspage': '교보문고_eBook스토어>RTS',
+        'https://ebook.kyobobook.co.kr/dig/etc/landing/new': '교보문고_eBook스토어>신간',
+        'https://ebook.kyobobook.co.kr/dig/etc/landing/best': '교보문고_eBook스토어>베스트',
+        'https://ebook.kyobobook.co.kr/dig/etc/landing/rent': '교보문고_eBook스토어>대여',
+        'https://ebook.kyobobook.co.kr/dig/evt/evtclltpage': '교보문고_eBook스토어>이벤트',
+        'https://ebook.kyobobook.co.kr/dig/evt/evtclnd': '교보문고_eBook스토어>이벤트>캘린더보기',
+        'https://ebook.kyobobook.co.kr/dig/evt/nwpbclnd': '교보문고_eBook스토어>이벤트>캘린더보기>신간',
+        'https://ebook.kyobobook.co.kr/dig/cff/notice': '교보문고_eBook스토어>공지사항',
+        'https://ebook.kyobobook.co.kr/dig/cff/note': '교보문고_eBook스토어>쪽지목록',
+        'https://ebook.kyobobook.co.kr/dig/etc/ebookgdnc': '교보문고_eBook스토어>이용안내',
+        'https://ebook.kyobobook.co.kr/dig/etc/ebookitem': '교보문고_eBook스토어>집중탐구',
+        'https://elibrary.kyobobook.co.kr/dig/elb/elibrary': '교보문고_eBook스토어>e-라이브러리',
+        'https://ecash.kyobobook.co.kr/dig/opr/ecash/guidance': '교보문고_eBook스토어>e캐시>이용안내',
+        'https://ecash.kyobobook.co.kr/dig/opr/ecash/general': '교보문고_eBook스토어>e캐시>일반충전',
+        'https://ecash.kyobobook.co.kr/dig/opr/ecash/auto': '교보문고_eBook스토어>e캐시>자동충전',
+        'https://ecash.kyobobook.co.kr/dig/opr/ecash/description': '교보문고_eBook스토어>e캐시>충전/사용내역',
+        'https://ecash.kyobobook.co.kr/dig/opr/ecash/exchange': '교보문고_eBook스토어>e캐시>교환번호등록',
+        'https://ecash.kyobobook.co.kr/dig/opr/ecash/conversion': '교보문고_eBook스토어>e캐시>통합포인트전환',
+        'https://ebook.kyobobook.co.kr/dig/etc/mmbrbnft': '교보문고_eBook스토어>회원혜택',
+        'https://ebook.kyobobook.co.kr/dig/cff/partnership': '교보문고_eBook스토어>제휴문의',
+        'https://ebook.kyobobook.co.kr/dig/etc/presentebook': '교보문고_eBook스토어>선물하기',
+        // if문 추가
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=1': '교보문고_eBook스토어>일반',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=2': '교보문고_eBook스토어>로맨스',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=4': '교보문고_eBook스토어>BL>BL소설',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=5': '교보문고_eBook스토어>BL>BL만화',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=6': '교보문고_eBook스토어>판타지',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=8': '교보문고_eBook스토어>만화>단행본만화',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=9': '교보문고_eBook스토어>만화>웹툰',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=1372': '교보문고_eBook스토어>오디오',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=19': '교보문고_eBook스토어>교보오리지널',
+        'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo={{카테고리 값}}&cmdt=EBK&clst1={{카테고리 값}}&clst2=&clst3=&landing=Y': '교보문고_eBook스토어>{{카테고리 1depth}}>{{카테고리 2depth}}>{{카테고리 3depth}}',
+        'https://ebook.kyobobook.co.kr/dig/etc/keywordsrch?lscCtgr={{GNB값}}&mscCtgr={{GNB값}}&keyword={{키워드명}}': '교보문고_eBook스토어>{{GNB 명}}>키워드검색',
+        // sam 추가
+        'https://sam.kyobobook.co.kr/dig/sam/sambookcnfg': 'SAM>메인>그리고책',
+        'https://sam.kyobobook.co.kr/dig/sam/pssbuy': 'SAM>메인>이용권구매',
+        'https://sam.kyobobook.co.kr/dig/sam/my-pass/change-payment': 'SAM>My이용권>정기결제수단변경',
+        'https://sam.kyobobook.co.kr/dig/sam/my-pass/rdng-register': 'SAM>My이용권>열람권등록',
+        'https://ebook.kyobobook.co.kr/dig/evt/samclnd': 'SAM>프리미엄>샘통북통캘린더',
+        // 'https://sam.kyobobook.co.kr/dig/sam/landing/new':'SAM>무제한>신간',
+        // 'https://sam.kyobobook.co.kr/dig/sam/landing/best':'SAM>무제한>베스트',
+
+        'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo={{카테고리1뎁스}}&cmdt=EBK&clst1={{카테고리 2뎁스}}&clst2={{카테고리 3뎁스}}&clst3=&landing=Y': 'SAM>{{카테고리 1depth}}>{{카테고리 2depth}}>{{카테고리 3depth}}',
+
+        // if 문 추가필요(처리 완료 #L359~373)
+        'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=12': 'SAM>메인',
+        'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=13': 'SAM>메인>프리미엄',
+        'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=326': 'SAM>메인>스페셜>세계문학',
+        'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=327': 'SAM>메인>스페셜>판타지무협',
+        // 처리 완료 (#L445~459)
+        'https://sam.kyobobook.co.kr/dig/sam/my-pass?tabType=SAM': 'SAM>메인>My이용권',
+        'https://sam.kyobobook.co.kr/dig/sam/samcnfg?tabType=SAM': 'SAM>sam소개',
+        'https://sam.kyobobook.co.kr/dig/sam/samintro?tabType=SAM': 'SAM>14일무료체험',
+        'https://sam.kyobobook.co.kr/dig/sam/landing/new?lsc=AUD': 'SAM>무제한>오디오북',
+        'https://sam.kyobobook.co.kr/dig/sam/landing/new?pageDvsn=premium&lsc=AUD': 'SAM>프리미엄>오디오북',
+        'https://sam.kyobobook.co.kr/dig/sam/landing/new?pageDvsn=premium': 'SAM>프리미엄>신간',
+        'https://sam.kyobobook.co.kr/dig/sam/landing/best?pageDvsn=premium': 'SAM>프리미엄>베스트',
+        'https://ebook-product.kyobobook.co.kr/dig/epd/sam/{{도서번호}}': 'SAM>상품상세',
+
+        // 2023.10.18 이메일 수신거부 관련 추가
+        'https://mmbr.kyobobook.co.kr/reject/mail': '이메일 수신거부',
+        'https://mmbr.kyobobook.co.kr/reject/mail/result': '이메일 수신거부>결과',
+      }
+
+      // safari 에서는 window.cookieStore 를 사용할수없어 수정
+      const user = navigator.userAgent;
+      if ((window.safari !== undefined) || ( user.indexOf("iPhone") > -1) || (user.indexOf("iPad") > -1)){
+        const pageviewObj = {}
+        pageviewObj.ep_visit_channelOption = 'PC'
+        let a = (navigator.userAgent || navigator.vendor || window.opera);
+        if (ga360.browserInfo.indexOf("GA_Android") > -1 || ga360.browserInfo.indexOf("GA_iOS_WK") > -1) {
+          pageviewObj.ep_visit_channelOption = 'APP'
+        }else if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) {
+          pageviewObj.ep_visit_channelOption = 'MOWEB'
+        }
+        pageviewObj.ep_visit_siteOption = '교보문고'
+        if (window.location.href.indexOf("ebook.") != -1) {
+          pageviewObj.ep_visit_siteOption = 'ebook'
+          if (window.location.origin.indexOf("mmbr.kyobobook.co.kr") != -1) {
+            pageviewObj.ep_visit_siteOption = '교보문고'
+          }
+        } else if (window.location.href.indexOf("ebook-product.") != -1) {
+          if (window.location.pathname.indexOf("/sam/") != -1) {
+            pageviewObj.ep_visit_siteOption = 'sam'
+          } else {
+            pageviewObj.ep_visit_siteOption = 'ebook'
+          }
+          if (window.location.origin.indexOf("mmbr.kyobobook.co.kr") != -1) {
+            pageviewObj.ep_visit_siteOption = '교보문고'
+          }
+        } else if (window.location.href.indexOf("ecash.") != -1) {
+          pageviewObj.ep_visit_siteOption = 'ebook'
+          if (window.location.origin.indexOf("mmbr.kyobobook.co.kr") != -1) {
+            pageviewObj.ep_visit_siteOption = '교보문고'
+          }
+        } else if (window.location.href.indexOf("elibrary.") != -1) {
+          pageviewObj.ep_visit_siteOption = 'ebook'
+          if (window.location.origin.indexOf("mmbr.kyobobook.co.kr") != -1) {
+            pageviewObj.ep_visit_siteOption = '교보문고'
+          }
+        } else if (window.location.href.indexOf("sam.") != -1) {
+          pageviewObj.ep_visit_siteOption = 'sam'
+          if (window.location.origin.indexOf("mmbr.kyobobook.co.kr") != -1) {
+            pageviewObj.ep_visit_siteOption = '교보문고'
+          }
+        } else if (window.location.href.indexOf("hottracks.") != -1) {
+          pageviewObj.ep_visit_siteOption = '핫트랙스'
+        } else if (window.location.href.indexOf("search.") != -1) {
+          // https://search.kyobobook.co.kr/search
+          if (window.location.search.indexOf("gbCode") != -1) {
+            // ebook_search : target=ebook
+            // sam_search : target=sam
+            var searchList = window.location.search.split("gbCode=")
+            var searchCode = searchList[1].split("&")[0]
+            // ebook, sam
+            if (searchCode == "EBK") {
+              pageviewObj.ep_visit_siteOption = "ebook"
+            } else if (searchCode == "SAM") {
+              pageviewObj.ep_visit_siteOption = 'sam'
+            } else if (searchCode == "HTS") {
+              pageviewObj.ep_visit_siteOption = '핫트랙스'
+            }
+          }
+        }
+        // /pod/ 가 들어가있는 모든 url 및 상품상세 페이지 > POD 표시가 있는 경우 "POD"로 데이터 수집
+        if (window.location.pathname.indexOf("/pod/") != -1) {
+          pageviewObj.ep_visit_siteOption = 'POD'
+        }
+
+        // 검색어를 입력한 "https://search.kyobobook.co.kr/search?keyword=%EA%B2%80%EC%83%89%EC%96%B4&gbCode=TOT&target=total"
+        // 와 같은 경우에 키워드를 수집
+        if(window.location.origin.indexOf("search.") != -1){
+          if (window.location.pathname.indexOf("search") != -1) {
+            if(window.location.search.indexOf("keyword") != -1){
+              var searchList = window.location.search.split("keyword=")
+              var searchKeyword = searchList[1].split("&")[0]
+              pageviewObj.ep_search_internalSearchWord = decodeURIComponent(searchKeyword)
+              pageviewObj.ep_search_SearchResult = "Y"
+              if(document.getElementsByClassName("result_count")[0]){
+                if(document.getElementsByClassName("result_count")[0].getElementsByClassName("fc_green")[0].textContent.startsWith("0")){
+                  pageviewObj.ep_search_SearchResult = "N"
+                }
+              }
+            }
+          }
+        }
+        pageviewObj.ep_test_DevProd = "개발"
+        pageviewObj.ep_page_fullUrl = window.location.href
+        pageviewObj.ep_page_noParameterUrl = window.location.origin + window.location.pathname
+        pageviewObj.title = window.document.title //'교보문고>웰컴>웰컴 메인'
+        pageviewObj.location = window.location.href // 'https://onk.ndev.kyobobook.co.kr/dd/ee'
+        if (pageDict[window.location.origin + window.location.pathname]) {
+          pageviewObj.ep_test_DevProd = "운영"
+          // 'https://www.kyobobook.co.kr/cscenter/faq?unfyFaqLscCode={{메뉴코드}}':'고객센터>자주묻는질문>{{메뉴명}}',
+          if (window.location.pathname.startsWith("/cscenter/faq")) {
+            if (window.location.search != '') {
+              // 2022.10.25 공통 수정
+              if (window.location.search.indexOf("unfyFaqLscCode") != -1) {
+                // unfyFaqLscCode
+                var searchList = window.location.search.split("&")
+                var menuCode = searchList[0].split("=")[1]
+                pageviewObj.title = "고객센터>자주묻는질문>" + menuCode
+              } else {
+                pageviewObj.title = "고객센터>자주묻는질문>BEST10"
+              }
+            } else {
+              pageviewObj.title = "고객센터>자주묻는질문>BEST10"
+            }
+          } else {
+            pageviewObj.title = pageDict[window.location.origin + window.location.pathname]
+          }
+        }
+        else {
+          // console.log('----- mapping pass ------')
+          if (window.location.origin.indexOf("ndev.") == -1) {
+            pageviewObj.ep_test_DevProd = "운영"
+          }
+          if (window.location.pathname.startsWith("/detail")) {
+            if (window.location.origin == "https://event.kyobobook.co.kr") {
+              pageviewObj.title = "교보문고>이벤트>" + window.document.title.split("|")[0]
+            } else {
+              pageviewObj.title = "교보문고>상품상세"
+            }
+          } else if (window.location.pathname.startsWith("/winner/detail")) {
+            pageviewObj.title = "이벤트>당첨자발표>상세"
+          } else if (window.location.pathname.startsWith("/cscenter/notice/detail")) {
+            pageviewObj.title = "고객센터>공지사항>상세"
+            // 'https://www.kyobobook.co.kr/picks/{{탭 주소}}':'교보문고>Picks>{{탭명}}',
+          } else if (window.location.pathname.startsWith("/picks")) {
+            var tapUrl = window.location.pathname.split("/")[2]
+            pageviewObj.title = "교보문고>Picks>" + tapUrl
+          } else if (window.location.pathname.startsWith("/dig/epd/ebook")) {
+            pageviewObj.title = "교보문고_eBook스토어>상품상세"
+          } else if (window.location.pathname.startsWith("/dig/elb/elibrary")) {
+            pageviewObj.title = "교보문고_eBook스토어>e-라이브러리"
+          } else if (window.location.pathname.startsWith("/dig/pnd/showcase")) {
+            if (((window.location.search != '') && (window.location.origin.indexOf('ebook.'))) != -1) {
+              var searchList = window.location.search.split("&")
+              var menuCode = searchList[0].split("=")[1]
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=1':'교보문고_eBook스토어>일반',
+              if (menuCode == "1")
+                pageviewObj.title = "교보문고_eBook스토어>일반"
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=2':'교보문고_eBook스토어>로맨스',
+              else if (menuCode == "2")
+                pageviewObj.title = "교보문고_eBook스토어>로맨스"
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=4':'교보문고_eBook스토어>BL>BL소설',
+              else if (menuCode == "4")
+                pageviewObj.title = "교보문고_eBook스토어>BL>BL소설"
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=5':'교보문고_eBook스토어>BL>BL만화',
+              else if (menuCode == "5")
+                pageviewObj.title = "교보문고_eBook스토어>BL>BL만화"
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=6':'교보문고_eBook스토어>판타지',
+              else if (menuCode == "6")
+                pageviewObj.title = "교보문고_eBook스토어>판타지"
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=8':'교보문고_eBook스토어>만화>단행본만화',
+              else if (menuCode == "8")
+                pageviewObj.title = "교보문고_eBook스토어>만화>단행본만화"
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=9':'교보문고_eBook스토어>만화>웹툰',
+              else if (menuCode == "9")
+                pageviewObj.title = "교보문고_eBook스토어>만화>웹툰"
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=1372':'교보문고_eBook스토어>오디오',
+              else if (menuCode == "1372")
+                pageviewObj.title = "교보문고_eBook스토어>오디오"
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=19':'교보문고_eBook스토어>교보오리지널',
+              else if (menuCode == "19")
+                pageviewObj.title = "교보문고_eBook스토어>교보오리지널"
+              // 금주 추후 진행
+              // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo={{카테고리 값}}&cmdt=EBK&clst1={{카테고리 값}}&clst2=&clst3=&landing=Y':'교보문고_eBook스토어>{{카테고리 1depth}}>{{카테고리 2depth}}>{{카테고리 3depth}}',
+              if (window.location.search.split("&").length > 5) {
+                var oneMenu = window.location.search.split("&")[1].split("=")[1] == "EBK" ? "ebook" : window.location.search.split("&")[1].split("=")[1] == "AUD" ? "오디오북" : "동영상"
+                var twoMenu = window.location.search.split("&")[2].split("=")[1]
+                var threeMenu = window.location.search.split("&")[3].split("=")[1]
+                pageviewObj.title = "교보문고_eBook스토어>" + oneMenu + ">" + ebookCateDic[twoMenu] + ">" + ebookCateDic[threeMenu]
+              }
+            } else if (((window.location.search != '') && (window.location.origin.indexOf('sam.'))) != -1) {
+              var searchList = window.location.search.split("&")
+              var menuCode = searchList[0].split("=")[1]
+              // 'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=12':'SAM>메인',,
+              if (menuCode == "12")
+                pageviewObj.title = 'SAM>메인'
+              // 'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=13':'SAM>메인>프리미엄',
+              else if (menuCode == "13")
+                pageviewObj.title = 'SAM>메인>프리미엄'
+              // 'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=326':'SAM>메인>스페셜>세계문학',
+              else if (menuCode == "326")
+                pageviewObj.title = 'SAM>메인>스페셜>세계문학'
+              // 'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=327':'SAM>메인>스페셜>판타지무협',
+              else if (menuCode == "327")
+                pageviewObj.title = 'SAM>메인>스페셜>판타지무협'
+              if (window.location.search.split("&").length > 5) {
+                var oneMenu = window.location.search.split("&")[1].split("=")[1] == "EBK" ? "ebook" : window.location.search.split("&")[1].split("=")[1] == "AUD" ? "오디오북" : "동영상"
+                var twoMenu = window.location.search.split("&")[2].split("=")[1]
+                var threeMenu = window.location.search.split("&")[3].split("=")[1]
+                pageviewObj.title = "SAM>" + oneMenu + ">" + ebookCateDic[twoMenu] + ">" + ebookCateDic[threeMenu]
+              }
+            }
+
+            // 금주 추후 진행
+            // 'https://ebook.kyobobook.co.kr/dig/etc/keywordsrch?lscCtgr={{GNB값}}&mscCtgr={{GNB값}}&keyword={{키워드명}}':'교보문고_eBook스토어>{{GNB 명}}>키워드검색',
+          } else if (window.location.pathname.startsWith("/dig/etc/keywordsrch")) {
+            pageviewObj.title = "교보문고_eBook스토어>{{GNB 명}}>키워드검색"
+          }
+          // 금주 추후 진행
+          // 'https://product.kyobobook.co.kr/category/{{카테고리 1값}}/{{카테고리 2 or 3값}}':'교보문고>{{카테고리 1depth}}>{{카테고리 2depth }}> {{카테고리 3depth}}',
+          // }
+          else if (window.location.pathname.startsWith("/category")) {
+            var cateUrlSplit = window.location.pathname.split("/")
+            var cateCode = cateUrlSplit[2]
+            var cateNum = window.location.pathname.split("/")[3]
+            var cateNumLength = cateNum.length
+            cateNum = window.location.pathname.split("/")[3].slice(0, 2)
+            if (cateCode == "KOR") {
+              if (cateNumLength == 2) {
+                pageviewObj.title = "교보문고>국내도서>" + category1Dic[cateNum]
+              } else {
+                var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                pageviewObj.title = "교보문고>국내도서>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+              }
+            }
+            else if (cateCode == "ENG") {
+              if (cateNumLength == 2) {
+                pageviewObj.title = "교보문고>서양도서>" + category1Dic[cateNum]
+              } else {
+                var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                pageviewObj.title = "교보문고>서양도서>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+              }
+            }
+            else if (cateCode == "JAP") {
+              if (cateNumLength == 2) {
+                pageviewObj.title = "교보문고>일본도서>" + category1Dic[cateNum]
+              } else {
+                var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                pageviewObj.title = "교보문고>일본도서>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+              }
+            }
+            else if (cateCode == "CUL") {
+              if (cateNumLength == 2) {
+                pageviewObj.title = "교보문고>강연>" + category1Dic[cateNum]
+              } else {
+                var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                pageviewObj.title = "교보문고>강연>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+              }
+            }
+            else if (cateCode == "KYO") {
+              if (cateNumLength == 2) {
+                pageviewObj.title = "교보문고>교보Only>" + category1Dic[cateNum]
+              } else {
+                var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                pageviewObj.title = "교보문고>교보Only>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+              }
+            }
+            else if (cateCode == "PBC") {
+              if (cateNumLength == 2) {
+                pageviewObj.title = "교보문고>교보문고 굿즈>" + category1Dic[cateNum]
+              } else {
+                var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                pageviewObj.title = "교보문고>교보문고 굿즈>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+              }
+            }
+            else if (cateCode == "GFC") {
+              if (cateNumLength == 2) {
+                pageviewObj.title = "교보문고>교보문고 기프트카드>" + category1Dic[cateNum]
+              } else {
+                var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                pageviewObj.title = "교보문고>교보문고 기프트카드>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+              }
+            }
+          } else if (window.location.pathname.startsWith("/dig/sam/my-pass")) {
+            pageviewObj.title = 'SAM>메인>My이용권'
+          } else if (window.location.pathname.startsWith("/dig/sam/samcnfg")) {
+            pageviewObj.title = 'SAM>sam소개'
+          } else if (window.location.pathname.startsWith("/dig/sam/samintro")) {
+            pageviewObj.title = 'SAM>14일무료체험'
+          } else if (window.location.pathname.startsWith("/dig/sam/landing/new")) {
+            if (window.location.search == '?lsc=AUD') {
+              pageviewObj.title = 'SAM>무제한>오디오북'
+            } else if (window.location.search == '?pageDvsn=premium&lsc=AUD') {
+              pageviewObj.title = 'SAM>프리미엄>오디오북'
+            } else if (window.location.search == '?pageDvsn=premium') {
+              pageviewObj.title = 'SAM>프리미엄>신간'
+            } else {
+              pageviewObj.title = 'SAM>무제한>신간'
+            }
+          } else if (window.location.pathname.startsWith("/dig/sam/landing/best")) {
+            if (window.location.search == '?pageDvsn=premium') {
+              pageviewObj.title = 'SAM>프리미엄>베스트'
+            } else {
+              pageviewObj.title = 'SAM>무제한>베스트'
+            }
+
+          } else if (window.location.pathname.startsWith("/dig/epd/sam/")) {
+            pageviewObj.title = 'SAM>상품상세'
+          }
+        }
+        pageviewObj.up_loginState = "N"
+
+        if(document.cookie.split("accessToken=")[1]){
+          var accessToken = document.cookie.split("accessToken=")[1].split(";")[0];
+          if (accessToken) {
+            const tokenJson = parseToken(accessToken)
+            const mynum = tokenJson["sub"]
+            const objuid = SHA256(mynum)
+            pageviewObj.ep_uid = objuid
+            pageviewObj.up_loginState = "Y"
+          }
+        }
+        if(window.location.origin.indexOf("search.") != -1){
+          if (window.location.pathname.indexOf("search") != -1) {
+            if(window.location.search.indexOf("keyword") == -1){
+              // console.log('-------GA_Screen----------')
+              GA_Screen(pageviewObj)
+              // console.log('-------GA_Screen-EndEnd---------')
+            }else{
+              // console.log('-------GA_Screen_Search----------')
+            }
+          }else{
+            // console.log('-------GA_Screen----------')
+            GA_Screen(pageviewObj)
+            // console.log('-------GA_Screen-EndEnd---------')
+          }
+        }else{
+          if (window.location.origin.indexOf("event.") != -1 && (window.location.href.indexOf("detail") != -1 || window.location.href.indexOf("make") != -1)) {
+            // console.log('-------GA_Screen_EventDetail----------')
+          } else {
+            // console.log('-------GA_Screen----------')
+            GA_Screen(pageviewObj)
+            // console.log('-------GA_Screen-EndEnd---------')
+          }
+        }
+      } else {
+        // 2022.10.25 쿠키를 가져오기 위해 로직을 then 안으로 수정
+          const pageviewObj = {}
+          pageviewObj.ep_visit_channelOption = 'PC'
+          let a = (navigator.userAgent || navigator.vendor || window.opera);
+          if (ga360.browserInfo.indexOf("GA_Android") > -1 || ga360.browserInfo.indexOf("GA_iOS_WK") > -1) {
+            pageviewObj.ep_visit_channelOption = 'APP'
+          }
+          else if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) {
+            pageviewObj.ep_visit_channelOption = 'MOWEB'
+          }
+          pageviewObj.ep_visit_siteOption = '교보문고'
+          if (window.location.href.indexOf("ebook.") != -1) {
+            pageviewObj.ep_visit_siteOption = 'ebook'
+            if (window.location.origin.indexOf("mmbr.kyobobook.co.kr") != -1) {
+              pageviewObj.ep_visit_siteOption = '교보문고'
+            }
+          } else if (window.location.href.indexOf("ebook-product.") != -1) {
+            if (window.location.pathname.indexOf("/sam/") != -1) {
+              pageviewObj.ep_visit_siteOption = 'sam'
+            } else {
+              pageviewObj.ep_visit_siteOption = 'ebook'
+            }
+          } else if (window.location.href.indexOf("ecash.") != -1) {
+            pageviewObj.ep_visit_siteOption = 'ebook'
+            if (window.location.origin.indexOf("mmbr.kyobobook.co.kr") != -1) {
+              pageviewObj.ep_visit_siteOption = '교보문고'
+            }
+          } else if (window.location.href.indexOf("elibrary.") != -1) {
+            pageviewObj.ep_visit_siteOption = 'ebook'
+            if (window.location.origin.indexOf("mmbr.kyobobook.co.kr") != -1) {
+              pageviewObj.ep_visit_siteOption = '교보문고'
+            }
+          } else if (window.location.href.indexOf("sam.") != -1) {
+            pageviewObj.ep_visit_siteOption = 'sam'
+          } else if (window.location.href.indexOf("hottracks.") != -1) {
+            pageviewObj.ep_visit_siteOption = '핫트랙스'
+          } else if (window.location.href.indexOf("search.") != -1) {
+            // https://search.kyobobook.co.kr/search
+            if (window.location.search.indexOf("gbCode") != -1) {
+              // ebook_search : target=ebook
+              // sam_search : target=sam
+              var searchList = window.location.search.split("gbCode=")
+              var searchCode = searchList[1].split("&")[0]
+              // ebook, sam
+              if (searchCode == "EBK") {
+                pageviewObj.ep_visit_siteOption = "ebook"
+              } else if (searchCode == "SAM") {
+                pageviewObj.ep_visit_siteOption = 'sam'
+              } else if (searchCode == "HTS") {
+                pageviewObj.ep_visit_siteOption = '핫트랙스'
+              }
+            }
+          }
+          // /pod/ 가 들어가있는 모든 url 및 상품상세 페이지 > POD 표시가 있는 경우 "POD"로 데이터 수집
+          if (window.location.pathname.indexOf("/pod/") != -1) {
+            pageviewObj.ep_visit_siteOption = 'POD'
+          }
+          // 검색어를 입력한 "https://search.kyobobook.co.kr/search?keyword=%EA%B2%80%EC%83%89%EC%96%B4&gbCode=TOT&target=total"
+          // 와 같은 경우에 키워드를 수집
+          if(window.location.origin.indexOf("search.") != -1){
+            if (window.location.pathname.indexOf("search") != -1) {
+              if(window.location.search.indexOf("keyword") != -1){
+                var searchList = window.location.search.split("keyword=")
+                var searchKeyword = searchList[1].split("&")[0]
+                pageviewObj.ep_search_internalSearchWord = decodeURIComponent(searchKeyword)
+                pageviewObj.ep_search_SearchResult = "Y"
+                if(document.getElementsByClassName("result_count")[0]){
+                  if(document.getElementsByClassName("result_count")[0].getElementsByClassName("fc_green")[0].textContent.startsWith("0")){
+                    pageviewObj.ep_search_SearchResult = "N"
+                  }
+                }
+              }
+            }
+          }
+
+          pageviewObj.ep_test_DevProd = "개발"
+          pageviewObj.ep_page_fullUrl = window.location.href
+          pageviewObj.ep_page_noParameterUrl = window.location.origin + window.location.pathname
+          pageviewObj.title = window.document.title //'교보문고>웰컴>웰컴 메인'
+          pageviewObj.location = window.location.href // 'https://onk.ndev.kyobobook.co.kr/dd/ee'
+          if (pageDict[window.location.origin + window.location.pathname]) {
+            pageviewObj.ep_test_DevProd = "운영"
+            // 'https://www.kyobobook.co.kr/cscenter/faq?unfyFaqLscCode={{메뉴코드}}':'고객센터>자주묻는질문>{{메뉴명}}',
+            if (window.location.pathname.startsWith("/cscenter/faq")) {
+              if (window.location.search != '') {
+                // 2022.10.25 공통 수정
+                if (window.location.search.indexOf("unfyFaqLscCode") != -1) {
+                  // unfyFaqLscCode
+                  var searchList = window.location.search.split("&")
+                  var menuCode = searchList[0].split("=")[1]
+                  pageviewObj.title = "고객센터>자주묻는질문>" + menuCode
+                } else {
+                  pageviewObj.title = "고객센터>자주묻는질문>BEST10"
+                }
+              } else {
+                pageviewObj.title = "고객센터>자주묻는질문>BEST10"
+              }
+            } else {
+              pageviewObj.title = pageDict[window.location.origin + window.location.pathname]
+            }
+          }
+          else {
+            // console.log('----- mapping pass ------')
+            if (window.location.origin.indexOf("ndev.") == -1) {
+              pageviewObj.ep_test_DevProd = "운영"
+            }
+            if (window.location.pathname.startsWith("/detail")) {
+              if (window.location.origin == "https://event.kyobobook.co.kr") {
+                pageviewObj.title = "교보문고>이벤트>" + window.document.title.split("|")[0]
+              } else {
+                pageviewObj.title = "교보문고>상품상세"
+              }
+            } else if (window.location.pathname.startsWith("/winner/detail")) {
+              pageviewObj.title = "이벤트>당첨자발표>상세"
+            } else if (window.location.pathname.startsWith("/cscenter/notice/detail")) {
+              pageviewObj.title = "고객센터>공지사항>상세"
+              // 'https://www.kyobobook.co.kr/picks/{{탭 주소}}':'교보문고>Picks>{{탭명}}',
+            } else if (window.location.pathname.startsWith("/picks")) {
+              var tapUrl = window.location.pathname.split("/")[2]
+              pageviewObj.title = "교보문고>Picks>" + tapUrl
+            } else if (window.location.pathname.startsWith("/dig/epd/ebook")) {
+              pageviewObj.title = "교보문고_eBook스토어>상품상세"
+            } else if (window.location.pathname.startsWith("/dig/elb/elibrary")) {
+              pageviewObj.title = "교보문고_eBook스토어>e-라이브러리"
+            } else if (window.location.pathname.startsWith("/dig/pnd/showcase")) {
+              if (((window.location.search != '') && (window.location.origin.indexOf('ebook.'))) != -1) {
+                var searchList = window.location.search.split("&")
+                var menuCode = searchList[0].split("=")[1]
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=1':'교보문고_eBook스토어>일반',
+                if (menuCode == "1")
+                  pageviewObj.title = "교보문고_eBook스토어>일반"
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=2':'교보문고_eBook스토어>로맨스',
+                else if (menuCode == "2")
+                  pageviewObj.title = "교보문고_eBook스토어>로맨스"
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=4':'교보문고_eBook스토어>BL>BL소설',
+                else if (menuCode == "4")
+                  pageviewObj.title = "교보문고_eBook스토어>BL>BL소설"
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=5':'교보문고_eBook스토어>BL>BL만화',
+                else if (menuCode == "5")
+                  pageviewObj.title = "교보문고_eBook스토어>BL>BL만화"
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=6':'교보문고_eBook스토어>판타지',
+                else if (menuCode == "6")
+                  pageviewObj.title = "교보문고_eBook스토어>판타지"
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=8':'교보문고_eBook스토어>만화>단행본만화',
+                else if (menuCode == "8")
+                  pageviewObj.title = "교보문고_eBook스토어>만화>단행본만화"
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=9':'교보문고_eBook스토어>만화>웹툰',
+                else if (menuCode == "9")
+                  pageviewObj.title = "교보문고_eBook스토어>만화>웹툰"
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=1372':'교보문고_eBook스토어>오디오',
+                else if (menuCode == "1372")
+                  pageviewObj.title = "교보문고_eBook스토어>오디오"
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo=19':'교보문고_eBook스토어>교보오리지널',
+                else if (menuCode == "19")
+                  pageviewObj.title = "교보문고_eBook스토어>교보오리지널"
+                // 금주 추후 진행
+                // 'https://ebook.kyobobook.co.kr/dig/pnd/showcase?pageNo={{카테고리 값}}&cmdt=EBK&clst1={{카테고리 값}}&clst2=&clst3=&landing=Y':'교보문고_eBook스토어>{{카테고리 1depth}}>{{카테고리 2depth}}>{{카테고리 3depth}}',
+                if (window.location.search.split("&").length > 5) {
+                  var oneMenu = window.location.search.split("&")[1].split("=")[1] == "EBK" ? "ebook" : window.location.search.split("&")[1].split("=")[1] == "AUD" ? "오디오북" : "동영상"
+                  var twoMenu = window.location.search.split("&")[2].split("=")[1]
+                  var threeMenu = window.location.search.split("&")[3].split("=")[1]
+                  pageviewObj.title = "교보문고_eBook스토어>" + oneMenu + ">" + ebookCateDic[twoMenu] + ">" + ebookCateDic[threeMenu]
+                }
+              } else if (((window.location.search != '') && (window.location.origin.indexOf('sam.'))) != -1) {
+                var searchList = window.location.search.split("&")
+                var menuCode = searchList[0].split("=")[1]
+                // 'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=12':'SAM>메인',,
+                if (menuCode == "12")
+                  pageviewObj.title = 'SAM>메인'
+                // 'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=13':'SAM>메인>프리미엄',
+                else if (menuCode == "13")
+                  pageviewObj.title = 'SAM>메인>프리미엄'
+                // 'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=326':'SAM>메인>스페셜>세계문학',
+                else if (menuCode == "326")
+                  pageviewObj.title = 'SAM>메인>스페셜>세계문학'
+                // 'https://sam.kyobobook.co.kr/dig/pnd/showcase?pageNo=327':'SAM>메인>스페셜>판타지무협',
+                else if (menuCode == "327")
+                  pageviewObj.title = 'SAM>메인>스페셜>판타지무협'
+                if (window.location.search.split("&").length > 5) {
+                  var oneMenu = window.location.search.split("&")[1].split("=")[1] == "EBK" ? "ebook" : window.location.search.split("&")[1].split("=")[1] == "AUD" ? "오디오북" : "동영상"
+                  var twoMenu = window.location.search.split("&")[2].split("=")[1]
+                  var threeMenu = window.location.search.split("&")[3].split("=")[1]
+                  pageviewObj.title = "SAM>" + oneMenu + ">" + ebookCateDic[twoMenu] + ">" + ebookCateDic[threeMenu]
+                }
+              }
+
+              // 금주 추후 진행
+              // 'https://ebook.kyobobook.co.kr/dig/etc/keywordsrch?lscCtgr={{GNB값}}&mscCtgr={{GNB값}}&keyword={{키워드명}}':'교보문고_eBook스토어>{{GNB 명}}>키워드검색',
+            } else if (window.location.pathname.startsWith("/dig/etc/keywordsrch")) {
+              pageviewObj.title = "교보문고_eBook스토어>{{GNB 명}}>키워드검색"
+            }
+            // 금주 추후 진행
+            // 'https://product.kyobobook.co.kr/category/{{카테고리 1값}}/{{카테고리 2 or 3값}}':'교보문고>{{카테고리 1depth}}>{{카테고리 2depth }}> {{카테고리 3depth}}',
+            // }
+            else if (window.location.pathname.startsWith("/category")) {
+              var cateUrlSplit = window.location.pathname.split("/")
+              var cateCode = cateUrlSplit[2]
+              var cateNum = window.location.pathname.split("/")[3]
+              var cateNumLength = cateNum.length
+              cateNum = window.location.pathname.split("/")[3].slice(0, 2)
+              if (cateCode == "KOR") {
+                if (cateNumLength == 2) {
+                  pageviewObj.title = "교보문고>국내도서>" + category1Dic[cateNum]
+                } else {
+                  var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                  pageviewObj.title = "교보문고>국내도서>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+                }
+              }
+              else if (cateCode == "ENG") {
+                if (cateNumLength == 2) {
+                  pageviewObj.title = "교보문고>서양도서>" + category1Dic[cateNum]
+                } else {
+                  var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                  pageviewObj.title = "교보문고>서양도서>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+                }
+              }
+              else if (cateCode == "JAP") {
+                if (cateNumLength == 2) {
+                  pageviewObj.title = "교보문고>일본도서>" + category1Dic[cateNum]
+                } else {
+                  var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                  pageviewObj.title = "교보문고>일본도서>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+                }
+              }
+              else if (cateCode == "CUL") {
+                if (cateNumLength == 2) {
+                  pageviewObj.title = "교보문고>강연>" + category1Dic[cateNum]
+                } else {
+                  var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                  pageviewObj.title = "교보문고>강연>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+                }
+              }
+              else if (cateCode == "KYO") {
+                if (cateNumLength == 2) {
+                  pageviewObj.title = "교보문고>교보Only>" + category1Dic[cateNum]
+                } else {
+                  var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                  pageviewObj.title = "교보문고>교보Only>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+                }
+              }
+              else if (cateCode == "PBC") {
+                if (cateNumLength == 2) {
+                  pageviewObj.title = "교보문고>교보문고 굿즈>" + category1Dic[cateNum]
+                } else {
+                  var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                  pageviewObj.title = "교보문고>교보문고 굿즈>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+                }
+              }
+              else if (cateCode == "GFC") {
+                if (cateNumLength == 2) {
+                  pageviewObj.title = "교보문고>교보문고 기프트카드>" + category1Dic[cateNum]
+                } else {
+                  var cate2Num = window.location.pathname.split("/")[3].slice(0, 4)
+                  pageviewObj.title = "교보문고>교보문고 기프트카드>" + category1Dic[cateNum] + ">" + category2Dic[cate2Num]
+                }
+              }
+            } else if (window.location.pathname.startsWith("/dig/sam/my-pass")) {
+              pageviewObj.title = 'SAM>메인>My이용권'
+            } else if (window.location.pathname.startsWith("/dig/sam/samcnfg")) {
+              pageviewObj.title = 'SAM>sam소개'
+            } else if (window.location.pathname.startsWith("/dig/sam/samintro")) {
+              pageviewObj.title = 'SAM>14일무료체험'
+            } else if (window.location.pathname.startsWith("/dig/sam/landing/new")) {
+              if (window.location.search == '?lsc=AUD') {
+                pageviewObj.title = 'SAM>무제한>오디오북'
+              } else if (window.location.search == '?pageDvsn=premium&lsc=AUD') {
+                pageviewObj.title = 'SAM>프리미엄>오디오북'
+              } else if (window.location.search == '?pageDvsn=premium') {
+                pageviewObj.title = 'SAM>프리미엄>신간'
+              } else {
+                pageviewObj.title = 'SAM>무제한>신간'
+              }
+            } else if (window.location.pathname.startsWith("/dig/sam/landing/best")) {
+              if (window.location.search == '?pageDvsn=premium') {
+                pageviewObj.title = 'SAM>프리미엄>베스트'
+              } else {
+                pageviewObj.title = 'SAM>무제한>베스트'
+              }
+
+            } else if (window.location.pathname.startsWith("/dig/epd/sam/")) {
+              pageviewObj.title = 'SAM>상품상세'
+            }
+          }
+          pageviewObj.up_loginState = "N"
+
+          if(document.cookie.split("accessToken=")[1]){
+            var accessToken = document.cookie.split("accessToken=")[1].split(";")[0];
+            if (accessToken) {
+              const tokenJson = parseToken(accessToken)
+              const mynum = tokenJson["sub"]
+              const objuid = SHA256(mynum)
+              pageviewObj.ep_uid = objuid
+              pageviewObj.up_loginState = "Y"
+            }
+          }
+          if(window.location.origin.indexOf("search.") != -1){
+          if (window.location.pathname.indexOf("search") != -1) {
+            if(window.location.search.indexOf("keyword") == -1){
+              // console.log('-------GA_Screen----------')
+              GA_Screen(pageviewObj)
+              // console.log('-------GA_Screen-EndEnd---------')
+            }else{
+              // console.log('-------GA_Screen_Search----------')
+            }
+          }else{
+            // console.log('-------GA_Screen----------')
+            GA_Screen(pageviewObj)
+            // console.log('-------GA_Screen-EndEnd---------')
+          }
+        }else{
+          if (window.location.origin.indexOf("event.") != -1 && (window.location.href.indexOf("detail") != -1 || window.location.href.indexOf("make") != -1)) {
+            // console.log('-------GA_Screen_EventDetail----------')
+          } else {
+            // console.log('-------GA_Screen----------')
+            GA_Screen(pageviewObj)
+            // console.log('-------GA_Screen-EndEnd---------')
+          }
+        }
+        }
+      // console.log('-------GA_Event---------')
+      // const event_name = 'click_검색_PC'
+      // const ep_button_area = '검색'
+      // const ep_button_area2 = ""
+      // const ep_button_name = '검색_통합검색'
+      // const ep_click_variable = '역행자'
+      // this.GA_Event(event_name, ep_button_area, ep_button_area2, ep_button_name, ep_click_variable)
+      // console.log('-------GA_Event-END---------')
+    }
+
+  }
+
+  new Ga360Class()
+  // ======================== 1.20230118 함수 추가 ========================
+  // 1-1. 타임스탬프 함수
+  function ep_test_hitTimestamp() {
+      var now = new Date();
+      var tzo = -now.getTimezoneOffset();
+      var dif = tzo >= 0 ? '+' : '-';
+      var pad = function(num) {
+          var norm = Math.abs(Math.floor(num));
+
+          return (norm < 10 ? '0' : '') + norm;
+      };
+
+      return now.getFullYear()
+      + '-' + pad(now.getMonth()+1)
+      + '-' + pad(now.getDate())
+      + 'T' + pad(now.getHours())
+      + ':' + pad(now.getMinutes())
+      + ':' + pad(now.getSeconds())
+      + pad(now.getMilliseconds())
+      + dif + pad(tzo / 60)
+      + ':' + pad(tzo % 60);
+  }
+
+  // 1-2. GTM 초기화 함수
+  // 이전 데이터가 전송되는 것을 방지하기 위해 GTM 내 이벤트 매개변수를 초기화 시킵니다.
+  function dataLayerUndefined() {
+    var GTMSET = new Object();
+    for (var value of dataLayer) {
+          for (var key in value) {
+              if(key.includes("ep_")) {
+                  GTMSET[key] = undefined;
+              }
+          }
+    }
+
+    return dataLayer.push(GTMSET);
+  }
+
+  // 1-3. 가상페이지뷰 전용 하이브리드 함수
+  // 핫트랙스 가상 페이지뷰 시 앱으로 전달할 때 사용되는 함수입니다.
+  function VirHybrid(GADATA) {
+      var emptyObject = Convert_Element(GADATA);
+      if (ga360.browserInfo.indexOf('HOTTRACKS') > -1 && document.location.hostname.includes('hottracks')) {
+          if (ga360.browserInfo.indexOf('GA_Android_HOTTRACKS') > -1) window.hottracksgascriptAndroid.GA_DATA(JSON.stringify(emptyObject));
+          else if (ga360.browserInfo.indexOf('GA_iOS_WK_HOTTRACKS') > -1) webkit.messageHandlers.hottracksgascriptCallbackHandler.postMessage(JSON.stringify(emptyObject));
+      } else {
+          if (ga360.browserInfo.indexOf('GA_Android') > -1) window.kyobogascriptAndroid.GA_DATA(JSON.stringify(emptyObject));
+          else if (ga360.browserInfo.indexOf('GA_iOS_WK') > -1) webkit.messageHandlers.kyobogascriptCallbackHandler.postMessage(JSON.stringify(emptyObject));
+      }
+  }
+
+  // 1-4. 가상페이지뷰 함수
+  // 핫트랙스 가상 페이지뷰 시 호출합니다.
+  function GA_Virtual(Object) {
+      try {
+          var GAData = Object;
+          if (ga360.browserInfo.indexOf('GA_iOS_WK') > -1 || ga360.browserInfo.indexOf('GA_Android') > -1) {
+              GAData.type = "P";
+              GAData.ep_test_hitTimestamp = ep_test_hitTimestamp();
+              GAData.ep_time_hour = ep_time_hour();
+              GAData.ep_time_minute = ep_time_minute();
+              VirHybrid(GAData);
+          } else {
+              GAData.event = 'ga_virtual';
+              dataLayer.push(GAData);
+              dataLayerUndefined();
+          }
+      } catch(e) {
+          console.error("GA_Virtual 함수 ERROR");
+      }
+  }
+  // 3-2. '시간' 추출 함수
+  function ep_time_hour() {
+    var now = new Date();
+    var hours = ('0' + now.getHours()).slice(-2);
+
+    return hours;
+  }
+
+  // 3-3. '분' 추출 함수
+  function ep_time_minute() {
+    var now = new Date();
+    var minutes = ('0' + now.getMinutes()).slice(-2);
+
+    return minutes;
+  }
+  // ======================== 2.20230118 함수 수정 ========================
+
+  function Convert_Element(RemoveValue) {
+    // let return_Value = new Object()
+    // console.log('-------RemoveValue---------')
+    // if(RemoveValue.length() === 0){
+    //   return RemoveValue
+    // }
+    // for (let key in RemoveValue) {
+    //   if (RemoveValue[key] === '' || RemoveValue[key] === undefined || RemoveValue[key] === null) {
+    //     delete RemoveValue[key]
+    //   }
+    // }
+    return RemoveValue
+  }
+
+  // 하이브리드 코드
+  function Hybrid(GADATA) {
+    // console.log('-------Hybrid---------')
+    // console.log(JSON.stringify(ga360.CommonData))
+    // console.log(JSON.stringify(GADATA))
+    // GADATA.type = "P"
+    // console.log('-------Hybrid end---------')
+    let emptyObject = JSON.parse(JSON.stringify(Convert_Element(ga360.CommonData)))
+    emptyObject = Object.assign(emptyObject, Convert_Element(GADATA))
+    // 20230118 코드 수정 부분 시작: 핫트랙스 이용자 분기처리
+    // 핫트랙스 앱 사용자를 구분하여 데이터를 전송합니다.
+    // if (ga360.browserInfo.indexOf('HOTTRACKS') > -1 && document.location.hostname.indexOf('hottracks') > -1) {
+    //   if (ga360.browserInfo.indexOf('GA_Android_HOTTRACKS') > -1) window.hottracksgascriptAndroid.GA_DATA(JSON.stringify(emptyObject));
+    //   else if (ga360.browserInfo.indexOf('GA_iOS_WK_HOTTRACKS') > -1) webkit.messageHandlers.hottracksgascriptCallbackHandler.postMessage(JSON.stringify(emptyObject));
+    // } else {
+    if (ga360.browserInfo.indexOf('GA_Android') > -1) window.kyobogascriptAndroid.GA_DATA(JSON.stringify(emptyObject))
+    else if (ga360.browserInfo.indexOf('GA_iOS_WK') > -1) webkit.messageHandlers.kyobogascriptCallbackHandler.postMessage(JSON.stringify(emptyObject))
+    // }
+  }
+
+  // 공통 화면 함수
+  function GA_Screen(Object) {
+    try {
+      const CommonData = Object
+      if (ga360.browserInfo.indexOf('GA_iOS_WK') > -1 || ga360.browserInfo.indexOf('GA_Android') > -1) {
+        CommonData.type = 'P'
+        // 20230118 코드 수정 부분 시작
+        CommonData.ep_test_hitTimestamp = ep_test_hitTimestamp();
+        CommonData.ep_time_hour = ep_time_hour();
+        CommonData.ep_time_minute = ep_time_minute();
+        // 20230118 코드 수정 부분 끝
+        Hybrid(CommonData)
+      }
+      else {
+        const w = window
+        const d = document
+        const s = 'script'
+        const l = 'dataLayer'
+        const i = 'GTM-TWGDFSP'
+          w[l] = w[l] || []
+          if (isEventDomain){
+              w[l].splice(0, 0, CommonData)
+          }else {
+              w[l].push(CommonData)
+          }
+          w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' })
+          const f = d.getElementsByTagName(s)[0]; const j = d.createElement(s); const dl = l != 'dataLayer' ? '&l=' + l : ''
+        j.async = true
+        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl
+        f.parentNode.insertBefore(j, f)
+      }
+    } catch (e) {
+      // console.log('APP 코드 시 ERROR')
+      console.error(e)
+    }
+  }
+
+  // 공통 이벤트 함수
+  function GA_Event(event_name, ep_button_area, ep_button_area2, ep_button_name, ep_click_variable, ep_search_internalSearchWord) {
+    try {
+      // console.log('-------ga-event-in-------')
+      if (ga360.browserInfo.indexOf('GA_iOS_WK') > -1 || ga360.browserInfo.indexOf('GA_Android') > -1) {
+        const GAData = {}
+        GAData.event_name = event_name
+        GAData.type = 'E'
+        GAData.ep_button_area = ep_button_area
+        GAData.ep_button_area2 = ep_button_area2
+        GAData.ep_button_name = ep_button_name
+        GAData.ep_click_variable = ep_click_variable
+        GAData.ep_search_internalSearchWord = ep_search_internalSearchWord
+        // 20230118 코드 수정 부분 시작
+        GAData.ep_test_hitTimestamp = ep_test_hitTimestamp();
+        GAData.ep_time_hour = ep_time_hour();
+        GAData.ep_time_minute = ep_time_minute();
+        // 20230118 코드 수정 부분 끝
+        Hybrid(GAData)
+      } else {
+        // console.log('-------ga-event-else-in-------')
+        const w = window
+        const d = document
+        const s = 'script'
+        const l = 'dataLayer'
+        w[l] = w[l] || []
+        w[l].push({
+          event: 'ga_event',
+          event_name: event_name,
+          ep_button_area: ep_button_area,
+          ep_button_area2: ep_button_area2,
+          ep_button_name: ep_button_name,
+          ep_click_variable: ep_click_variable,
+          ep_search_internalSearchWord: ep_search_internalSearchWord
+        })
+        // console.log('-------ga-event-else-out-------')
+        // console.log(w[l])
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // 공통 전자상거래 함수
+  function EcommerceSet(E_step, items, actionList, addDimension, addMetric) {
+    try {
+      if (ga360.browserInfo.indexOf('GA_iOS_WK') > -1 || ga360.browserInfo.indexOf('GA_Android') > -1) {
+        var APPData = new Object();
+        APPData.event_name = E_step;
+        APPData.type = "E";
+        // 20230118 코드 수정 부분 시작 - 1
+        APPData.ep_test_hitTimestamp = ep_test_hitTimestamp();
+        APPData.ep_time_hour = ep_time_hour();
+        APPData.ep_time_minute = ep_time_minute();
+        // 20230118 코드 수정 부분 끝 - 1
+        APPData.items = items;
+        APPData.transaction = actionList;
+        APPData = Object.assign(APPData, addDimension, addMetric);
+        Hybrid(APPData)
+      } else {
+        var Ecommerce = new Object();
+        var DataSend = new Object();
+        Ecommerce = { items: [] }
+        Ecommerce.items = items;
+        var EcommerceData = Object.assign({}, Ecommerce, actionList);
+
+        DataSend = Object.assign({}, addDimension, addMetric)
+        DataSend.event = 'ga_ecommerce';
+        DataSend.event_name = E_step;
+        DataSend.ecommerce = EcommerceData;
+        dataLayer.push(DataSend);
+        dataLayer.push({
+          'ecommerce': undefined,
+          'event_name': undefined,
+          'ep_ecommerce_section': undefined,
+          'ep_order_baroDreamType': undefined,
+          'ep_order_baroDreamPlace': undefined,
+          'ep_order_mainPayOption': undefined,
+          'ep_order_partnershipPointSave': undefined,
+          'ep_order_partnershipPointUse': undefined,
+          'ep_order_serviceFee': undefined,
+          'ep_order_giftPackingFee': undefined,
+          'ep_order_shippingInfo': undefined,
+          'ep_order_total': undefined,
+          'ep_order_bookTotal': undefined,
+          'ep_order_discount': undefined,
+          'ep_order_couponUsed': undefined,
+          'ep_order_pointUsed': undefined,
+          'ep_order_depositUsed': undefined,
+          'ep_order_cashUsed': undefined,
+          'ep_order_eBookcashUsed': undefined,
+          'ep_order_eticketUsed': undefined,
+          'ep_order_mileageUsed': undefined,
+          'ep_order_giftcardUsed': undefined,
+          'ep_order_partnershippointUse': undefined,
+          'ep_order_smilecashUsed': undefined,
+          'ep_order_pointReserve': undefined
+        })
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  /**
+    *
+    *  Secure Hash Algorithm (SHA256)
+    *  http://www.webtoolkit.info/
+    *
+    *  Original code by Angel Marin, Paul Johnston.
+    *
+    **/
+
+  function SHA256(s) {
+    var chrsz = 8;
+    var hexcase = 0;
+
+    function safe_add(x, y) {
+      var lsw = (x & 0xFFFF) + (y & 0xFFFF);
+      var msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+      return (msw << 16) | (lsw & 0xFFFF);
+    }
+
+    function S(X, n) { return (X >>> n) | (X << (32 - n)); }
+    function R(X, n) { return (X >>> n); }
+    function Ch(x, y, z) { return ((x & y) ^ ((~x) & z)); }
+    function Maj(x, y, z) { return ((x & y) ^ (x & z) ^ (y & z)); }
+    function Sigma0256(x) { return (S(x, 2) ^ S(x, 13) ^ S(x, 22)); }
+    function Sigma1256(x) { return (S(x, 6) ^ S(x, 11) ^ S(x, 25)); }
+    function Gamma0256(x) { return (S(x, 7) ^ S(x, 18) ^ R(x, 3)); }
+    function Gamma1256(x) { return (S(x, 17) ^ S(x, 19) ^ R(x, 10)); }
+
+    function core_sha256(m, l) {
+
+      var K = new Array(0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5, 0x3956C25B, 0x59F111F1,
+        0x923F82A4, 0xAB1C5ED5, 0xD807AA98, 0x12835B01, 0x243185BE, 0x550C7DC3,
+        0x72BE5D74, 0x80DEB1FE, 0x9BDC06A7, 0xC19BF174, 0xE49B69C1, 0xEFBE4786,
+        0xFC19DC6, 0x240CA1CC, 0x2DE92C6F, 0x4A7484AA, 0x5CB0A9DC, 0x76F988DA,
+        0x983E5152, 0xA831C66D, 0xB00327C8, 0xBF597FC7, 0xC6E00BF3, 0xD5A79147,
+        0x6CA6351, 0x14292967, 0x27B70A85, 0x2E1B2138, 0x4D2C6DFC, 0x53380D13,
+        0x650A7354, 0x766A0ABB, 0x81C2C92E, 0x92722C85, 0xA2BFE8A1, 0xA81A664B,
+        0xC24B8B70, 0xC76C51A3, 0xD192E819, 0xD6990624, 0xF40E3585, 0x106AA070,
+        0x19A4C116, 0x1E376C08, 0x2748774C, 0x34B0BCB5, 0x391C0CB3, 0x4ED8AA4A,
+        0x5B9CCA4F, 0x682E6FF3, 0x748F82EE, 0x78A5636F, 0x84C87814, 0x8CC70208,
+        0x90BEFFFA, 0xA4506CEB, 0xBEF9A3F7, 0xC67178F2);
+
+      var HASH = new Array(0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19);
+
+      var W = new Array(64);
+      var a, b, c, d, e, f, g, h, i, j;
+      var T1, T2;
+
+      m[l >> 5] |= 0x80 << (24 - l % 32);
+      m[((l + 64 >> 9) << 4) + 15] = l;
+
+      for (var i = 0; i < m.length; i += 16) {
+        a = HASH[0];
+        b = HASH[1];
+        c = HASH[2];
+        d = HASH[3];
+        e = HASH[4];
+        f = HASH[5];
+        g = HASH[6];
+        h = HASH[7];
+
+        for (var j = 0; j < 64; j++) {
+          if (j < 16) W[j] = m[j + i];
+          else W[j] = safe_add(safe_add(safe_add(Gamma1256(W[j - 2]), W[j - 7]), Gamma0256(W[j - 15])), W[j - 16]);
+
+          T1 = safe_add(safe_add(safe_add(safe_add(h, Sigma1256(e)), Ch(e, f, g)), K[j]), W[j]);
+          T2 = safe_add(Sigma0256(a), Maj(a, b, c));
+
+          h = g;
+          g = f;
+          f = e;
+          e = safe_add(d, T1);
+          d = c;
+          c = b;
+          b = a;
+          a = safe_add(T1, T2);
+        }
+
+        HASH[0] = safe_add(a, HASH[0]);
+        HASH[1] = safe_add(b, HASH[1]);
+        HASH[2] = safe_add(c, HASH[2]);
+        HASH[3] = safe_add(d, HASH[3]);
+        HASH[4] = safe_add(e, HASH[4]);
+        HASH[5] = safe_add(f, HASH[5]);
+        HASH[6] = safe_add(g, HASH[6]);
+        HASH[7] = safe_add(h, HASH[7]);
+      }
+      return HASH;
+    }
+
+    function str2binb(str) {
+      var bin = Array();
+      var mask = (1 << chrsz) - 1;
+      for (var i = 0; i < str.length * chrsz; i += chrsz) {
+        bin[i >> 5] |= (str.charCodeAt(i / chrsz) & mask) << (24 - i % 32);
+      }
+      return bin;
+    }
+
+    function Utf8Encode(string) {
+      string = string.replace(/\r\n/g, "\n");
+      var utftext = "";
+
+      for (var n = 0; n < string.length; n++) {
+
+        var c = string.charCodeAt(n);
+
+        if (c < 128) {
+          utftext += String.fromCharCode(c);
+        }
+        else if ((c > 127) && (c < 2048)) {
+          utftext += String.fromCharCode((c >> 6) | 192);
+          utftext += String.fromCharCode((c & 63) | 128);
+        }
+        else {
+          utftext += String.fromCharCode((c >> 12) | 224);
+          utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+          utftext += String.fromCharCode((c & 63) | 128);
+        }
+
+      }
+
+      return utftext;
+    }
+
+    function binb2hex(binarray) {
+      var hex_tab = hexcase ? "0123456789ABCDEF" : "0123456789abcdef";
+      var str = "";
+      for (var i = 0; i < binarray.length * 4; i++) {
+        str += hex_tab.charAt((binarray[i >> 2] >> ((3 - i % 4) * 8 + 4)) & 0xF) +
+          hex_tab.charAt((binarray[i >> 2] >> ((3 - i % 4) * 8)) & 0xF);
+      }
+      return str;
+    }
+    s = Utf8Encode(s);
+    return binb2hex(core_sha256(str2binb(s), s.length * chrsz));
+  }
+
+  /**
+     * JWT Payload 파싱
+     * @param {string} token - JWT
+     * @returns {string}
+     */
+  function parseToken(token) {
+    // JWT payload 문자열 파싱
+    let payload = token.split('.')
+    if (payload.length < 2) return null
+    payload = payload[1]
+    // Base64 디코딩
+    const decoded = decodeBase64(payload, 'json')
+    const result = {}
+    Object.keys(decoded).forEach(k => {
+      const value = decoded[k]
+      result[k] = value
+    })
+    return result
+  }
+  /**
+   * Base64 문자열 디코딩
+   * @see https://developer.mozilla.org/en-US/docs/Glossary/Base64#solution_1_%E2%80%93_escaping_the_string_before_encoding_it
+   * @param {string} value - Base64 문자열
+   * @param {'JSON'|'ARRAY'} [type] - JSON, ARRAY
+   * @returns {string|string[]|JSON}
+   */
+  function decodeBase64(value, type) {
+    value = replIncorrectTokenStr(value)
+    let decoded
+    try {
+      decoded = decodeURIComponent(window.atob(value))
+      return JSON.parse(decoded)
+    } catch (err) {
+      return value
+    }
+    return decoded
+  }
+
+  function isEventDomain(){
+    if (window.location.origin.indexOf("event.") != -1 && (window.location.href.indexOf("detail") != -1 || window.location.href.indexOf("make") != -1)) {
+      return true
+    } else {
+      return false
+    }
+  }
+
+  /**
+   * token 값 base64 형식으로 변환
+   * @param {string} base64String
+   * @returns {string}
+   */
+  function replIncorrectTokenStr(base64String) {
+    // console.log(base64String)
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+    return base64
+  }
+
+  (function (a) { (jQuery.browser = jQuery.browser || {}).mobile = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4)) })(navigator.userAgent || navigator.vendor || window.opera);
+  $.browser.isMobile = function () {
+    let a = (navigator.userAgent || navigator.vendor || window.opera);
+    return /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4));
+  }
+
+  window.ga360 = {
+    GA_Event: (event_name, ep_button_area, ep_button_area2, ep_button_name, ep_click_variable, ep_search_internalSearchWord) => {
+      return GA_Event(event_name, ep_button_area, ep_button_area2, ep_button_name, ep_click_variable, ep_search_internalSearchWord)
+    },
+    EcommerceSet: (E_step, items, actionList, addDimension, addMetric) => {
+      return EcommerceSet(E_step, items, actionList, addDimension, addMetric)
+    },
+    GA_Screen: (object) => {
+      return GA_Screen(object)
+    },
+    parseToken : (token) =>{
+      return parseToken(token)
+    },
+    SHA256 : (text) =>{
+      return SHA256(text)
+    }
+  }
+}())
